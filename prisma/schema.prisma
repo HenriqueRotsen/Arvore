@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum PartnershipType {
+  married
+  partner
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(admin)
+  createdAt    DateTime @default(now())
+}
+
+model Person {
+  id        String    @id @default(cuid())
+  firstName String
+  lastName  String    @default("")
+  gender    Gender    @default(other)
+  birthDate DateTime? @db.Date
+  deathDate DateTime? @db.Date
+  birthCity String?
+  photoUrl  String?
+  notes     String?   @db.Text
+  deceased  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  childrenAsParent ParentChild[] @relation("Parent")
+  parentsAsChild   ParentChild[] @relation("Child")
+  partnershipsA    Partnership[] @relation("PartnerA")
+  partnershipsB    Partnership[] @relation("PartnerB")
+}
+
+model ParentChild {
+  id       String @id @default(cuid())
+  parentId String
+  childId  String
+  parent   Person @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child    Person @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([childId])
+}
+
+model Partnership {
+  id        String           @id @default(cuid())
+  personAId String
+  personBId String
+  type      PartnershipType  @default(married)
+  startDate DateTime?        @db.Date
+  endDate   DateTime?        @db.Date
+  personA   Person           @relation("PartnerA", fields: [personAId], references: [id], onDelete: Cascade)
+  personB   Person           @relation("PartnerB", fields: [personBId], references: [id], onDelete: Cascade)
+
+  @@unique([personAId, personBId])
+  @@index([personBId])
+}

@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Árvore da família Rotsen
 
-## Getting Started
+Site colaborativo da árvore genealógica: qualquer pessoa pode ver a árvore; só administradores cadastram pessoas, vínculos **pai/mãe → filho** e cônjuges. Avós, netos, irmãos, tios e primos são calculados automaticamente.
 
-First, run the development server:
+## Como rodar
+
+1. Instale o [Docker](https://docs.docker.com/get-docker/) e o Node.js 20+.
+2. Copie o ambiente e ajuste a senha do admin:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Suba o PostgreSQL, gere o banco e o primeiro admin:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run db:up
+npx prisma migrate dev --name init
+npm run db:seed
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Abra [http://localhost:3000](http://localhost:3000). Se a 3000 já estiver em uso, o Next.js sobe na **3001** (ou a próxima livre) — use essa URL, não force a 3000.
 
-## Learn More
+Login padrão (local, definido no `.env`):
 
-To learn more about Next.js, take a look at the following resources:
+- e-mail: `admin@rotsen.local`
+- senha: a que estiver em `ADMIN_PASSWORD`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Como cadastrar a família
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. No **Painel**, crie as pessoas (nome, datas, foto opcional).
+2. Vincule **pai ou mãe → filho**. Se a criança tem dois pais, faça o vínculo duas vezes.
+3. Marque **cônjuge** quando quiser que o casal apareça junto (não é inferido só por terem filhos em comum).
+4. A home centraliza a árvore automaticamente (gerações mais antigas primeiro). Dá para mudar com “Ver a partir de”.
 
-## Deploy on Vercel
+## Variáveis
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Variável | Uso |
+| --- | --- |
+| `DATABASE_URL` | Postgres (`postgresql://rotsen:rotsen@localhost:5435/rotsen` no Docker local) |
+| `AUTH_SECRET` | Segredo do login (`openssl rand -hex 32`) |
+| `AUTH_URL` | Só em produção, se precisar forçar o domínio público. Em local, **não defina** — o login segue a porta em que o site está. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Primeiro admin (o seed cria ou atualiza) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Fotos ficam em `public/uploads/`. Em produção, troque a senha do admin e o `AUTH_SECRET`.

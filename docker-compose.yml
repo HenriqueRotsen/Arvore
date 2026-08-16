@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rotsen-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rotsen
+      POSTGRES_PASSWORD: rotsen
+      POSTGRES_DB: rotsen
+    ports:
+      - "5435:5432"
+    volumes:
+      - rotsen_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rotsen -d rotsen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rotsen_pg:
