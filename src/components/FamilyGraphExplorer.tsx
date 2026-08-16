@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FamilyTreeView, type TreePerson } from "@/components/FamilyTreeView";
-import type { Node } from "relatives-tree/lib/types";
+import type { Node as RelativesNode } from "relatives-tree/lib/types";
 import {
   edgeKindLabel,
   findKinship,
@@ -18,7 +18,7 @@ export function FamilyGraphExplorer({
   rootId,
   adjacency,
 }: {
-  nodes: Node[];
+  nodes: RelativesNode[];
   people: Record<string, TreePerson>;
   rootId: string;
   adjacency: Adjacency;
