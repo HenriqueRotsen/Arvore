@@ -322,7 +322,6 @@ export function FamilyTreeView({
           className="absolute inset-0 cursor-grab touch-none overflow-hidden active:cursor-grabbing"
           onCopy={(event) => event.preventDefault()}
           onCut={(event) => event.preventDefault()}
-          onSelectStart={(event) => event.preventDefault()}
           onPointerDown={onViewportPointerDown}
           onPointerMove={onViewportPointerMove}
           onPointerUp={onViewportPointerUp}
