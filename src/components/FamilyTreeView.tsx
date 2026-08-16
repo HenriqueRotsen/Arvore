@@ -315,11 +315,14 @@ export function FamilyTreeView({
   }
 
   return (
-    <div className="flex min-h-[min(32rem,calc(100dvh-11rem))] flex-1 flex-col sm:min-h-[70vh]">
+    <div className="flex min-h-[min(32rem,calc(100dvh-11rem))] flex-1 select-none flex-col sm:min-h-[70vh]">
       <div className="relative min-h-0 flex-1 touch-none overflow-hidden border-y border-line bg-[radial-gradient(circle_at_top,_#f7f4ea,_#ece6d6)]">
         <div
           ref={viewportRef}
           className="absolute inset-0 cursor-grab touch-none overflow-hidden active:cursor-grabbing"
+          onCopy={(event) => event.preventDefault()}
+          onCut={(event) => event.preventDefault()}
+          onSelectStart={(event) => event.preventDefault()}
           onPointerDown={onViewportPointerDown}
           onPointerMove={onViewportPointerMove}
           onPointerUp={onViewportPointerUp}
@@ -396,7 +399,7 @@ export function FamilyTreeView({
             const selected = isFrom || isTo;
             const loose = (adjacency[node.id] ?? []).length === 0;
             const className = [
-              "absolute block cursor-pointer border p-3",
+              "absolute block cursor-pointer overflow-hidden border p-2.5 select-none",
               selected
                 ? "border-[#7a6bb8] bg-[linear-gradient(145deg,#cfe0f6_0%,#d5d0f0_48%,#e3cdee_100%)] shadow-[0_0_0_2px_rgba(122,107,184,0.28)]"
                 : onPath
@@ -415,7 +418,7 @@ export function FamilyTreeView({
                 className={className}
                 style={{
                   width: NODE_WIDTH,
-                  minHeight: NODE_HEIGHT,
+                  height: NODE_HEIGHT,
                   transform: `translate(${node.left * UNIT_X + PAD}px, ${node.top * UNIT_Y + PAD}px)`,
                   textAlign: "left",
                 }}
@@ -426,19 +429,20 @@ export function FamilyTreeView({
                   }
                 }}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex h-full items-start gap-2.5">
                   {person.photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={person.photoUrl}
                       alt=""
+                      draggable={false}
                       width={720}
                       height={720}
-                      className="h-14 w-14 rounded-full object-cover object-top"
+                      className="h-12 w-12 shrink-0 rounded-full object-cover object-top"
                     />
                   ) : (
                     <div
-                      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full font-serif text-lg ${
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-serif text-base ${
                         person.gender === "female"
                           ? "bg-[#ead7d0] text-terracotta"
                           : "bg-[#d7e2d8] text-accent-dark"
@@ -447,25 +451,34 @@ export function FamilyTreeView({
                       {person.name.slice(0, 1)}
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-serif text-[15px] leading-snug font-normal italic break-words">
+                  <div className="min-w-0 flex-1 text-[11px] leading-snug text-muted">
+                    <p className="font-serif text-[13px] leading-snug font-normal italic break-words text-foreground">
                       {person.name}
                     </p>
                     {isFrom ? (
-                      <p className="text-xs font-medium text-[#4e3f86]">origem</p>
+                      <p className="mt-0.5 font-medium text-[#4e3f86]">origem</p>
                     ) : isTo ? (
-                      <p className="text-xs font-medium text-[#4e3f86]">destino</p>
+                      <p className="mt-0.5 font-medium text-[#4e3f86]">destino</p>
                     ) : loose ? (
-                      <p className="text-xs text-muted">sem vínculo · nova árvore</p>
-                    ) : (
-                      <p className="truncate text-xs text-muted">
-                        {[person.years, person.birthCity].filter(Boolean).join(" · ") ||
-                          "selecionar"}
-                      </p>
-                    )}
+                      <p className="mt-0.5">sem vínculo · nova árvore</p>
+                    ) : null}
+                    <p className="mt-0.5 break-words">
+                      {person.gender === "female"
+                        ? "Feminino"
+                        : person.gender === "male"
+                          ? "Masculino"
+                          : "Outro"}
+                    </p>
+                    {person.years ? (
+                      <p className="break-words">{person.years}</p>
+                    ) : null}
+                    {person.deceased ? <p>falecido(a)</p> : null}
+                    {person.birthCity ? (
+                      <p className="break-words">{person.birthCity}</p>
+                    ) : null}
                     <a
                       href={`/pessoa/${node.id}`}
-                      className="inline-flex min-h-8 items-center text-xs text-accent-dark underline-offset-2 hover:underline"
+                      className="mt-0.5 inline-flex items-center text-accent-dark underline-offset-2 hover:underline"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => event.stopPropagation()}
                     >

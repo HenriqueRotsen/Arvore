@@ -36,7 +36,7 @@ export default async function TreePage({
   );
 
   return (
-    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-3 py-4 sm:px-4 sm:py-6">
+    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 select-none flex-col px-3 py-4 sm:px-4 sm:py-6 [&_input]:select-text">
       <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="page-title">Árvore da família</h1>

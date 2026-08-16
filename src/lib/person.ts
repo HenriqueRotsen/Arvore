@@ -25,7 +25,7 @@ export function toTreePerson(person: {
     id: person.id,
     name: fullName(person),
     photoUrl: person.photoUrl,
-    years: lifespan(person),
+    years: lifeDates(person),
     gender: person.gender,
     deceased: Boolean(person.deceased || person.deathDate),
     birthCity: person.birthCity ?? null,
@@ -38,20 +38,27 @@ export function formatDate(date: Date | string | null | undefined) {
   return value.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
+export function lifeDates(person: {
+  birthDate?: Date | string | null;
+  deathDate?: Date | string | null;
+}) {
+  const birth = formatDate(person.birthDate);
+  const death = formatDate(person.deathDate);
+  if (birth && death) return `${birth} – ${death}`;
+  return birth ?? death;
+}
+
 export function lifespan(person: {
   birthDate?: Date | string | null;
   deathDate?: Date | string | null;
   deceased?: boolean;
 }) {
-  const birth = formatDate(person.birthDate);
-  const death = formatDate(person.deathDate);
+  const dates = lifeDates(person);
   const deceased = Boolean(person.deceased || person.deathDate);
 
-  if (birth && death) return `${birth} – ${death} · falecido(a)`;
-  if (birth && deceased) return `${birth} · falecido(a)`;
-  if (death) return `falecido(a) · ${death}`;
+  if (dates && deceased) return `${dates} · falecido(a)`;
   if (deceased) return "falecido(a)";
-  return birth;
+  return dates;
 }
 
 export function livingLabel(person: {

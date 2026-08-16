@@ -69,10 +69,10 @@ export default async function PersonPage({
         <div className="flex-1">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted">Ficha</p>
           <h1 className="page-title mt-1">{fullName(person)}</h1>
-          <p className="mt-2 text-muted">
-            {genderLabel(person.gender)}
-            {lifespan(person) ? ` · ${lifespan(person)}` : ""}
-          </p>
+          <div className="mt-2 space-y-0.5 text-muted">
+            <p>{genderLabel(person.gender)}</p>
+            {lifespan(person) ? <p>{lifespan(person)}</p> : null}
+          </div>
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted">Situação</dt>
