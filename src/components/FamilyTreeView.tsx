@@ -93,6 +93,40 @@ export function FamilyTreeView({
   scaleRef.current = scale;
   panRef.current = pan;
 
+  function applyZoom(nextScale: number, clientX: number, clientY: number) {
+    const clamped = Math.min(2.2, Math.max(0.25, nextScale));
+    const prevScale = scaleRef.current;
+    const el = viewportRef.current;
+    if (!el || prevScale <= 0) {
+      scaleRef.current = clamped;
+      setScale(clamped);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+    const ratio = clamped / prevScale;
+    const prevPan = panRef.current;
+    const nextPan = {
+      x: mx - (mx - prevPan.x) * ratio,
+      y: my - (my - prevPan.y) * ratio,
+    };
+    scaleRef.current = clamped;
+    panRef.current = nextPan;
+    setScale(clamped);
+    setPan(nextPan);
+  }
+
+  function zoomFromCenter(nextScale: number) {
+    const el = viewportRef.current;
+    if (!el) {
+      applyZoom(nextScale, 0, 0);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    applyZoom(nextScale, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+
   const tree = useMemo(
     () => layoutForest(nodes, adjacency, rootId),
     [nodes, adjacency, rootId],
@@ -117,7 +151,7 @@ export function FamilyTreeView({
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const factor = event.deltaY > 0 ? 0.92 : 1.08;
-      setScale((value) => Math.min(2.2, Math.max(0.25, value * factor)));
+      applyZoom(scaleRef.current * factor, event.clientX, event.clientY);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -204,7 +238,7 @@ export function FamilyTreeView({
       const next =
         pinch.current.scale *
         (pointerDistance(first, second) / Math.max(pinch.current.distance, 1));
-      setScale(Math.min(2.2, Math.max(0.25, next)));
+      applyZoom(next, (first.x + second.x) / 2, (first.y + second.y) / 2);
       moved.current = true;
       return;
     }
@@ -424,7 +458,7 @@ export function FamilyTreeView({
               type="button"
               className="btn-outline btn-sm size-11 p-0 text-lg"
               aria-label="Diminuir zoom"
-              onClick={() => setScale((value) => Math.max(0.25, value - 0.15))}
+              onClick={() => zoomFromCenter(scaleRef.current - 0.15)}
             >
               −
             </button>
@@ -432,7 +466,7 @@ export function FamilyTreeView({
               type="button"
               className="btn-outline btn-sm size-11 p-0 text-lg"
               aria-label="Aumentar zoom"
-              onClick={() => setScale((value) => Math.min(2.2, value + 0.15))}
+              onClick={() => zoomFromCenter(scaleRef.current + 0.15)}
             >
               +
             </button>
