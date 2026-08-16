@@ -20,6 +20,8 @@ const NODE_HEIGHT = 156;
 const COL_GAP = 180;
 const ROW_GAP = 140;
 const PAD = 80;
+const UNIT_X = (NODE_WIDTH + COL_GAP) / 2;
+const UNIT_Y = (NODE_HEIGHT + ROW_GAP) / 2;
 
 function elbowPath(
   x1: number,
@@ -131,6 +133,38 @@ export function FamilyTreeView({
     () => layoutForest(nodes, adjacency, rootId),
     [nodes, adjacency, rootId],
   );
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
+
+  function defaultScale() {
+    return (viewportRef.current?.clientWidth ?? 800) < 640 ? 0.42 : 0.85;
+  }
+
+  function recenterOnLargestRoot() {
+    const forest = treeRef.current;
+    const el = viewportRef.current;
+    const nextScale = defaultScale();
+    const rootNode = forest.nodes.find(
+      (node) => node.id === forest.largestRootId && !node.placeholder,
+    );
+    if (!el || !rootNode) {
+      scaleRef.current = nextScale;
+      panRef.current = { x: 16, y: 16 };
+      setScale(nextScale);
+      setPan({ x: 16, y: 16 });
+      return;
+    }
+    const x = rootNode.left * UNIT_X + NODE_WIDTH / 2 + PAD;
+    const y = rootNode.top * UNIT_Y + NODE_HEIGHT / 2 + PAD;
+    const nextPan = {
+      x: el.clientWidth / 2 - x * nextScale,
+      y: el.clientHeight / 2 - y * nextScale,
+    };
+    scaleRef.current = nextScale;
+    panRef.current = nextPan;
+    setScale(nextScale);
+    setPan(nextPan);
+  }
 
   const highlightSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
   const pathPairs = useMemo(() => {
@@ -144,10 +178,7 @@ export function FamilyTreeView({
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    if (el.clientWidth < 640) {
-      setScale(0.42);
-      setPan({ x: 16, y: 16 });
-    }
+    recenterOnLargestRoot();
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const factor = event.deltaY > 0 ? 0.92 : 1.08;
@@ -166,17 +197,15 @@ export function FamilyTreeView({
     );
   }
 
-  const unitX = (NODE_WIDTH + COL_GAP) / 2;
-  const unitY = (NODE_HEIGHT + ROW_GAP) / 2;
-  const canvasWidth = Math.max(tree.canvas.width * unitX + PAD * 2, 800);
-  const canvasHeight = Math.max(tree.canvas.height * unitY + PAD * 2, 560);
+  const canvasWidth = Math.max(tree.canvas.width * UNIT_X + PAD * 2, 800);
+  const canvasHeight = Math.max(tree.canvas.height * UNIT_Y + PAD * 2, 560);
 
   const positions = new Map(
     tree.nodes.map((node) => [
       node.id,
       {
-        x: node.left * unitX + NODE_WIDTH / 2 + PAD,
-        y: node.top * unitY + NODE_HEIGHT / 2 + PAD,
+        x: node.left * UNIT_X + NODE_WIDTH / 2 + PAD,
+        y: node.top * UNIT_Y + NODE_HEIGHT / 2 + PAD,
       },
     ]),
   );
@@ -387,7 +416,7 @@ export function FamilyTreeView({
                 style={{
                   width: NODE_WIDTH,
                   minHeight: NODE_HEIGHT,
-                  transform: `translate(${node.left * unitX + PAD}px, ${node.top * unitY + PAD}px)`,
+                  transform: `translate(${node.left * UNIT_X + PAD}px, ${node.top * UNIT_Y + PAD}px)`,
                   textAlign: "left",
                 }}
                 onKeyDown={(event) => {
@@ -473,11 +502,7 @@ export function FamilyTreeView({
             <button
               type="button"
               className="btn-outline btn-sm h-11 px-3"
-              onClick={() => {
-                const narrow = (viewportRef.current?.clientWidth ?? 800) < 640;
-                setScale(narrow ? 0.42 : 0.85);
-                setPan({ x: 16, y: 16 });
-              }}
+              onClick={() => recenterOnLargestRoot()}
             >
               Recentrar
             </button>

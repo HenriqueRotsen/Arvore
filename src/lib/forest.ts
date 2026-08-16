@@ -16,10 +16,10 @@ export type ForestNode = {
 export type ForestLayout = {
   nodes: ForestNode[];
   canvas: { width: number; height: number };
+  largestRootId: string | null;
 };
 
-function pickRoot(ids: string[], nodesById: Map<string, Node>, focusId: string) {
-  if (ids.includes(focusId)) return focusId;
+function pickGenealogicalRoot(ids: string[], nodesById: Map<string, Node>) {
   const withoutParents = ids.filter(
     (id) => (nodesById.get(id)?.parents.length ?? 0) === 0,
   );
@@ -31,6 +31,11 @@ function pickRoot(ids: string[], nodesById: Map<string, Node>, focusId: string) 
     if (byChildren !== 0) return byChildren;
     return a.localeCompare(b);
   })[0];
+}
+
+function pickRoot(ids: string[], nodesById: Map<string, Node>, focusId: string) {
+  if (ids.includes(focusId)) return focusId;
+  return pickGenealogicalRoot(ids, nodesById);
 }
 
 type LaidTree = {
@@ -214,6 +219,10 @@ export function layoutForest(
 ): ForestLayout {
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const components = connectedComponents(adjacency);
+  const largest = [...components].sort((a, b) => b.length - a.length)[0];
+  const largestRootId = largest
+    ? pickGenealogicalRoot(largest, nodesById)
+    : null;
   const focusComponent = components.find((group) => group.includes(focusId));
   const rest = components.filter((group) => group !== focusComponent);
   const families = rest.filter((group) => group.length > 1);
@@ -265,5 +274,5 @@ export function layoutForest(
 
   const width = Math.max(SIZE, ...placed.map((node) => node.left + SIZE));
   const height = Math.max(SIZE, ...placed.map((node) => node.top + SIZE));
-  return { nodes: placed, canvas: { width, height } };
+  return { nodes: placed, canvas: { width, height }, largestRootId };
 }
