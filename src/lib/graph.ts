@@ -299,13 +299,13 @@ function bloodRoleLabel(
 
   if (up === 0) {
     const term = DESCENDANTS[down - 1];
-    if (term) return inflect(gender, ...term);
+    if (term) return inflect(gender, term[0], term[1], term[2]);
     return `descendente em ${down}º grau`;
   }
 
   if (down === 0) {
     const term = ASCENDANTS[up - 1];
-    if (term) return inflect(gender, ...term);
+    if (term) return inflect(gender, term[0], term[1], term[2]);
     return `ascendente em ${up}º grau`;
   }
 
