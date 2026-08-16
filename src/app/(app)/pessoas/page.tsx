@@ -23,7 +23,7 @@ export default async function PeoplePage({
   });
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="page-title">Pessoas</h1>
@@ -32,7 +32,7 @@ export default async function PeoplePage({
             filhos e cônjuges ficam na ficha de cada um.
           </p>
         </div>
-        <Link href="/pessoas/nova" className="btn-solid self-start">
+        <Link href="/pessoas/nova" className="btn-solid w-full sm:w-auto sm:self-start">
           Nova pessoa
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default async function PeoplePage({
                     </span>
                   ) : null}
                 </span>
-                <span className="link-nav">Editar</span>
+                <span className="link-nav hidden sm:inline">Editar</span>
               </Link>
             </li>
           ))}

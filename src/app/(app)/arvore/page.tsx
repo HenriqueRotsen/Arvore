@@ -36,12 +36,12 @@ export default async function TreePage({
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-3 py-4 sm:px-4 sm:py-6">
+      <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="page-title">Árvore da família</h1>
-          <p className="mt-1 max-w-2xl text-muted">
-            Clique em dois nós para ver o grau de parentesco entre eles.
+          <p className="mt-1 text-sm text-muted sm:max-w-2xl">
+            Toque em duas pessoas para ver o parentesco.
           </p>
         </div>
         <TreeFocusSelect

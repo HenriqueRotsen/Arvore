@@ -87,7 +87,7 @@ export function RelationBlocks({
             <li className="text-sm text-muted">Nenhum pai cadastrado.</li>
           ) : (
             parents.map((parent) => (
-              <li key={parent.id} className="flex items-center justify-between gap-2">
+              <li key={parent.id} className="flex flex-wrap items-center justify-between gap-2">
                 <PersonChip person={parent} href={`/pessoas/${parent.id}`} />
                 <form action={removeParentChild}>
                   <input type="hidden" name="parentId" value={parent.id} />
@@ -108,7 +108,7 @@ export function RelationBlocks({
               people={parentCandidates}
               placeholder="Buscar pai ou mãe"
             />
-            <button type="submit" className="btn-solid">
+            <button type="submit" className="btn-solid w-full sm:w-auto">
               Vincular pai/mãe
             </button>
           </ActionForm>
@@ -131,7 +131,7 @@ export function RelationBlocks({
                 <li className="text-sm text-muted">Nenhum filho nesta união.</li>
               ) : (
                 (childrenByUnion.get(spouse.id) ?? []).map((child) => (
-                  <li key={child.id} className="flex items-center justify-between gap-2">
+                  <li key={child.id} className="flex flex-wrap items-center justify-between gap-2">
                     <PersonChip person={child} href={`/pessoas/${child.id}`} />
                     <form action={removeParentChild}>
                       <input type="hidden" name="parentId" value={person.id} />
@@ -151,7 +151,7 @@ export function RelationBlocks({
             <p className="mb-2 text-sm font-medium">Só com este progenitor</p>
             <ul className="space-y-2">
               {soloChildren.map((child) => (
-                <li key={child.id} className="flex items-center justify-between gap-2">
+                <li key={child.id} className="flex flex-wrap items-center justify-between gap-2">
                   <PersonChip person={child} href={`/pessoas/${child.id}`} />
                   <form action={removeParentChild}>
                     <input type="hidden" name="parentId" value={person.id} />
@@ -179,7 +179,7 @@ export function RelationBlocks({
               placeholder="Deste casamento com… (opcional)"
               required={false}
             />
-            <button type="submit" className="btn-solid">
+            <button type="submit" className="btn-solid w-full sm:w-auto">
               Vincular filho
             </button>
           </ActionForm>
@@ -197,7 +197,7 @@ export function RelationBlocks({
             <li className="text-sm text-muted">Nenhum casamento cadastrado.</li>
           ) : (
             spouses.map((spouse, index) => (
-              <li key={spouse.id} className="flex items-center justify-between gap-2">
+              <li key={spouse.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0">
                   <span className="mr-2 text-xs text-muted">#{index + 1}</span>
                   <PersonChip person={spouse} href={`/pessoas/${spouse.id}`} />
@@ -247,7 +247,7 @@ export function RelationBlocks({
                 />
               </label>
             </div>
-            <button type="submit" className="btn-solid">
+            <button type="submit" className="btn-solid w-full sm:w-auto">
               Adicionar casamento
             </button>
           </ActionForm>

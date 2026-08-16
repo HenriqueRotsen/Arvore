@@ -27,7 +27,7 @@ export default async function SearchPage({
         });
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-12">
+    <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-5 sm:py-12">
       <h1 className="page-title">Buscar</h1>
       <div className="mt-8 max-w-md">
         <SearchBox defaultQuery={query} />

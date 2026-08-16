@@ -148,7 +148,7 @@ export function PersonForm({
             name="photo"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
-            className="w-full text-sm file:mr-3 file:cursor-pointer file:border-0 file:bg-accent file:px-4 file:py-2 file:text-[11px] file:uppercase file:tracking-[0.22em] file:text-[#f4f1e6] hover:file:bg-accent-dark"
+            className="w-full max-w-full text-sm file:mr-3 file:cursor-pointer file:border-0 file:bg-accent file:px-4 file:py-2.5 file:text-[11px] file:uppercase file:tracking-[0.22em] file:text-[#f4f1e6] hover:file:bg-accent-dark"
           />
         </div>
       </div>
@@ -167,10 +167,10 @@ export function PersonForm({
       {autosave ? (
         <SaveStatus />
       ) : (
-        <button
-          type="submit"
-          className="btn-solid"
-        >
+          <button
+            type="submit"
+            className="btn-solid w-full sm:w-auto"
+          >
           {submitLabel}
         </button>
       )}

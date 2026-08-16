@@ -85,6 +85,13 @@ export function FamilyTreeView({
   const [pan, setPan] = useState({ x: 24, y: 24 });
   const drag = useRef<DragState | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ distance: number; scale: number } | null>(null);
+  const moved = useRef(false);
+  const scaleRef = useRef(scale);
+  const panRef = useRef(pan);
+  scaleRef.current = scale;
+  panRef.current = pan;
 
   const tree = useMemo(() => {
     try {
@@ -106,6 +113,10 @@ export function FamilyTreeView({
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
+    if (el.clientWidth < 640) {
+      setScale(0.42);
+      setPan({ x: 16, y: 16 });
+    }
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const factor = event.deltaY > 0 ? 0.92 : 1.08;
@@ -149,80 +160,96 @@ export function FamilyTreeView({
     })
     .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge));
 
-  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+  function pointerDistance(
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function onViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    if (pointers.current.size === 1 && event.button === 0) {
+      moved.current = false;
+      drag.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        origPanX: panRef.current.x,
+        origPanY: panRef.current.y,
+        moved: false,
+      };
+      pinch.current = null;
+      return;
+    }
+
+    if (pointers.current.size >= 2) {
+      drag.current = null;
+      const [first, second] = [...pointers.current.values()];
+      pinch.current = {
+        distance: pointerDistance(first, second),
+        scale: scaleRef.current,
+      };
+    }
+  }
+
+  function onViewportPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointers.current.size >= 2 && pinch.current) {
+      const [first, second] = [...pointers.current.values()];
+      const next =
+        pinch.current.scale *
+        (pointerDistance(first, second) / Math.max(pinch.current.distance, 1));
+      setScale(Math.min(2.2, Math.max(0.25, next)));
+      moved.current = true;
+      return;
+    }
+
     const current = drag.current;
     if (!current) return;
     const dx = event.clientX - current.startX;
     const dy = event.clientY - current.startY;
-    if (Math.abs(dx) + Math.abs(dy) > 4) current.moved = true;
+    if (Math.abs(dx) + Math.abs(dy) > 6) {
+      current.moved = true;
+      moved.current = true;
+    }
     setPan({ x: current.origPanX + dx, y: current.origPanY + dy });
   }
 
-  function endDrag(event: React.PointerEvent<HTMLDivElement>) {
-    drag.current = null;
-    (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  function onViewportPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    pointers.current.delete(event.pointerId);
+    pinch.current = null;
+    if (pointers.current.size === 0) {
+      drag.current = null;
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+      return;
+    }
+    const remaining = [...pointers.current.values()][0];
+    if (remaining) {
+      drag.current = {
+        startX: remaining.x,
+        startY: remaining.y,
+        origPanX: panRef.current.x,
+        origPanY: panRef.current.y,
+        moved: moved.current,
+      };
+    }
   }
 
   return (
-    <div className="flex h-full min-h-[70vh] flex-col">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="text-sm text-muted">Zoom</span>
-        <button
-          type="button"
-          className="btn-outline btn-sm"
-          onClick={() => setScale((value) => Math.max(0.25, value - 0.15))}
+    <div className="flex min-h-[min(32rem,calc(100dvh-11rem))] flex-1 flex-col sm:min-h-[70vh]">
+      <div className="relative min-h-0 flex-1 touch-none overflow-hidden border-y border-line bg-[radial-gradient(circle_at_top,_#f7f4ea,_#ece6d6)]">
+        <div
+          ref={viewportRef}
+          className="absolute inset-0 cursor-grab touch-none overflow-hidden active:cursor-grabbing"
+          onPointerDown={onViewportPointerDown}
+          onPointerMove={onViewportPointerMove}
+          onPointerUp={onViewportPointerUp}
+          onPointerCancel={onViewportPointerUp}
         >
-          −
-        </button>
-        <button
-          type="button"
-          className="btn-outline btn-sm"
-          onClick={() => setScale((value) => Math.min(2.2, value + 0.15))}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="btn-outline btn-sm"
-          onClick={() => {
-            setScale(0.85);
-            setPan({ x: 24, y: 24 });
-          }}
-        >
-          Recentrar
-        </button>
-        <span className="ml-2 flex items-center gap-4 text-xs text-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-6 bg-[#8d7a62]" />
-            pai/filho
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-6 border-t-2 border-dashed border-[#a45a3a]" />
-            cônjuge
-          </span>
-        </span>
-        <span className="text-sm text-muted">
-          Arraste o fundo para navegar. Roda do mouse = zoom.
-        </span>
-      </div>
-      <div
-        ref={viewportRef}
-        className="relative flex-1 cursor-grab overflow-hidden border-y border-line bg-[radial-gradient(circle_at_top,_#f7f4ea,_#ece6d6)] active:cursor-grabbing"
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          drag.current = {
-            startX: event.clientX,
-            startY: event.clientY,
-            origPanX: pan.x,
-            origPanY: pan.y,
-            moved: false,
-          };
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerMove={onPointerMove}
-        onPointerUp={(event) => endDrag(event)}
-        onPointerCancel={(event) => endDrag(event)}
-      >
         <div
           className="relative"
           style={{
@@ -318,10 +345,8 @@ export function FamilyTreeView({
                   transform: `translate(${node.left * unitX + PAD}px, ${node.top * unitY + PAD}px)`,
                   textAlign: "left",
                 }}
-                onPointerDown={(event) => {
-                  event.stopPropagation();
-                }}
                 onClick={() => {
+                  if (moved.current) return;
                   onSelectPerson?.(node.id);
                 }}
                 onKeyDown={(event) => {
@@ -368,7 +393,7 @@ export function FamilyTreeView({
                     )}
                     <a
                       href={`/pessoa/${node.id}`}
-                      className="text-xs text-accent-dark underline-offset-2 hover:underline"
+                      className="inline-flex min-h-8 items-center text-xs text-accent-dark underline-offset-2 hover:underline"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => event.stopPropagation()}
                     >
@@ -379,6 +404,41 @@ export function FamilyTreeView({
               </div>
             );
           })}
+        </div>
+        </div>
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3">
+          <p className="hidden max-w-[12rem] rounded-sm bg-[#f4f1e6]/85 px-2 py-1 text-[11px] leading-snug text-muted sm:block">
+            Arraste para mover. Roda ou belisque para zoom.
+          </p>
+          <div className="pointer-events-auto ml-auto flex gap-2">
+            <button
+              type="button"
+              className="btn-outline btn-sm size-11 p-0 text-lg"
+              aria-label="Diminuir zoom"
+              onClick={() => setScale((value) => Math.max(0.25, value - 0.15))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="btn-outline btn-sm size-11 p-0 text-lg"
+              aria-label="Aumentar zoom"
+              onClick={() => setScale((value) => Math.min(2.2, value + 0.15))}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="btn-outline btn-sm h-11 px-3"
+              onClick={() => {
+                const narrow = (viewportRef.current?.clientWidth ?? 800) < 640;
+                setScale(narrow ? 0.42 : 0.85);
+                setPan({ x: 16, y: 16 });
+              }}
+            >
+              Recentrar
+            </button>
+          </div>
         </div>
       </div>
     </div>

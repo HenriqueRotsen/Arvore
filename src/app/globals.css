@@ -28,6 +28,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-hammersmith), ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-x: none;
 }
 
 h1,
@@ -50,20 +52,34 @@ h3 {
 
 .page-title {
   font-family: var(--font-playfair), ui-serif, Georgia, serif;
-  font-size: 2.25rem;
+  font-size: 1.75rem;
   font-weight: 400;
   font-style: italic;
   line-height: 1.15;
 }
 
+@media (min-width: 640px) {
+  .page-title {
+    font-size: 2.25rem;
+  }
+}
+
 .input-line {
   width: 100%;
+  max-width: 100%;
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
-  padding: 0.4rem 0;
-  font-size: 0.875rem;
+  padding: 0.55rem 0;
+  font-size: 1rem;
   outline: none;
+}
+
+@media (min-width: 640px) {
+  .input-line {
+    padding: 0.4rem 0;
+    font-size: 0.875rem;
+  }
 }
 
 .input-line:focus {
@@ -100,6 +116,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.75rem;
   background: var(--accent);
   color: #f4f1e6;
   font-size: 11px;
@@ -119,6 +136,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.75rem;
   background: transparent;
   color: var(--accent-dark);
   font-size: 11px;
@@ -142,6 +160,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.5rem;
   background: transparent;
   color: var(--terracotta);
   font-size: 11px;
@@ -164,6 +183,7 @@ h3 {
 }
 
 .btn-sm {
+  min-height: 2.25rem;
   padding: 0.35rem 0.7rem;
   font-size: 10px;
 }

@@ -76,7 +76,7 @@ export function TreeFocusSelect({
         aria-haspopup="listbox"
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between border-0 border-b border-line bg-transparent py-2 text-left text-sm outline-none focus:border-accent"
+        className="flex min-h-11 w-full items-center justify-between border-0 border-b border-line bg-transparent py-2 text-left text-base outline-none focus:border-accent sm:text-sm"
       >
         <span className="text-muted">Buscar pelo nome…</span>
         <svg

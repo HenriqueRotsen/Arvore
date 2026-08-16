@@ -45,7 +45,7 @@ export function DeletePersonButton({
 
   return (
     <>
-      <button type="button" className="btn-danger" onClick={() => setOpen(true)}>
+      <button type="button" className="btn-danger w-full sm:w-auto" onClick={() => setOpen(true)}>
         Apagar pessoa
       </button>
       {open ? (

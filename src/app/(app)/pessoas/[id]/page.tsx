@@ -32,8 +32,8 @@ export default async function EditPersonPage({
           </p>
           <h1 className="page-title mt-1">{fullName(person)}</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href={`/pessoa/${person.id}`} className="btn-outline">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link href={`/pessoa/${person.id}`} className="btn-outline w-full sm:w-auto">
             Ver ficha
           </Link>
           <DeletePersonButton personId={person.id} name={fullName(person)} />

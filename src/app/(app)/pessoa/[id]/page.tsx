@@ -51,7 +51,7 @@ export default async function PersonPage({
   const relatives = inferRelatives(id, graph);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10">
+    <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:py-10">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <PersonAvatar person={person} size="lg" />
         <div className="flex-1">
@@ -88,7 +88,7 @@ export default async function PersonPage({
               {person.notes}
             </p>
           ) : null}
-          <Link href={`/pessoas/${person.id}`} className="btn-solid mt-6 inline-flex">
+          <Link href={`/pessoas/${person.id}`} className="btn-solid mt-6 inline-flex w-full sm:w-auto">
             Editar
           </Link>
         </div>

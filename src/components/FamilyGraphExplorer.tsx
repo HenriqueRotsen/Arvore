@@ -57,11 +57,11 @@ export function FamilyGraphExplorer({
   const roleTitle = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <section>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <section className="shrink-0">
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <PersonPick
-            label={picking === "from" ? "De (clique na árvore)" : "De"}
+            label={picking === "from" ? "De (toque na árvore)" : "De"}
             active={picking === "from"}
             value={fromId}
             options={options}
@@ -71,7 +71,7 @@ export function FamilyGraphExplorer({
             }}
           />
           <PersonPick
-            label={picking === "to" ? "Até (clique na árvore)" : "Até"}
+            label={picking === "to" ? "Até (toque na árvore)" : "Até"}
             active={picking === "to"}
             value={toId}
             options={options}
@@ -82,7 +82,7 @@ export function FamilyGraphExplorer({
           />
           <button
             type="button"
-            className="btn-outline"
+            className="btn-outline w-full sm:w-auto"
             onClick={() => {
               setFromId("");
               setToId("");
@@ -253,7 +253,7 @@ function PersonPick({
         aria-haspopup="listbox"
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
-        className={`flex w-full items-center justify-between border-0 border-b bg-transparent py-2 text-left text-sm outline-none focus:border-accent ${
+        className={`flex min-h-11 w-full items-center justify-between border-0 border-b bg-transparent py-2 text-left text-base outline-none focus:border-accent sm:text-sm ${
           active ? "border-accent" : "border-line"
         }`}
       >
@@ -317,7 +317,7 @@ function PersonPick({
                 >
                   <button
                     type="button"
-                    className={`block w-full px-3 py-2 text-left text-sm ${
+                    className={`block min-h-11 w-full px-3 py-2 text-left text-sm ${
                       index === activeIndex ? "bg-accent/10 text-accent-dark" : ""
                     }`}
                     onMouseDown={(event) => {

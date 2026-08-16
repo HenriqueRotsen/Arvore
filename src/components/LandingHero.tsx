@@ -12,7 +12,7 @@ export function LandingHero() {
   }, []);
 
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#1a1c18]">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#1a1c18] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/landing-tree.jpg?v=2"
@@ -37,20 +37,20 @@ export function LandingHero() {
         />
         <Link
           href="/arvore"
-          className="mt-5 text-[12px] uppercase tracking-[0.32em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
+          className="mt-6 inline-flex min-h-11 items-center text-sm uppercase tracking-[0.28em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
         >
           Ver a árvore
         </Link>
-        <div className="mt-7 flex gap-10">
+        <div className="mt-6 flex flex-col items-center gap-4 sm:mt-7 sm:flex-row sm:gap-10">
           <Link
             href="/busca"
-            className="text-[12px] uppercase tracking-[0.32em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
+            className="inline-flex min-h-11 items-center text-sm uppercase tracking-[0.28em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
           >
             Buscar
           </Link>
           <Link
             href="/pessoas"
-            className="text-[12px] uppercase tracking-[0.32em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
+            className="inline-flex min-h-11 items-center text-sm uppercase tracking-[0.28em] text-[#f4f1e6] drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] transition hover:text-white"
           >
             Pessoas
           </Link>

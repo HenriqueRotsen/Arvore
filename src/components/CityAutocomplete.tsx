@@ -121,7 +121,7 @@ export function CityAutocomplete({
             <li key={city.id} role="option" aria-selected={index === active}>
               <button
                 type="button"
-                className={`block w-full px-3 py-2 text-left text-sm ${
+                className={`block min-h-11 w-full px-3 py-2 text-left text-sm ${
                   index === active ? "bg-accent/10 text-accent-dark" : ""
                 }`}
                 onMouseDown={(event) => {

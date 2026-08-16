@@ -1,6 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hammersmith_One, Playfair_Display } from "next/font/google";
-import { SiteShell } from "@/components/SiteShell";
 import "./globals.css";
 
 const hammersmith = Hammersmith_One({
@@ -26,20 +25,27 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f4f1e6",
+};
+
 export default function RootLayout({
   children,
 }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${hammersmith.variable} ${playfair.variable} h-full antialiased`}
+      className={`${hammersmith.variable} ${playfair.variable} min-h-dvh antialiased`}
       suppressHydrationWarning
     >
       <body
-        className="flex min-h-full flex-col bg-background text-foreground"
+        className="flex min-h-dvh flex-col overflow-x-hidden bg-background text-foreground"
         suppressHydrationWarning
       >
-        <SiteShell>{children}</SiteShell>
+        {children}
       </body>
     </html>
   );

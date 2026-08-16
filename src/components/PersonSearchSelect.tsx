@@ -93,7 +93,7 @@ export function PersonSearchSelect({
         aria-haspopup="listbox"
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between border-0 border-b border-line bg-transparent py-2 text-left text-sm outline-none focus:border-accent"
+        className="flex min-h-11 w-full items-center justify-between border-0 border-b border-line bg-transparent py-2 text-left text-base outline-none focus:border-accent sm:text-sm"
       >
         <span className={selected ? "truncate text-foreground" : "text-muted"}>
           {selected ? fullName(selected) : placeholder}
@@ -149,7 +149,7 @@ export function PersonSearchSelect({
                 <li key={person.id} role="option" aria-selected={person.id === selectedId}>
                   <button
                     type="button"
-                    className={`block w-full px-3 py-2 text-left text-sm ${
+                    className={`block min-h-11 w-full px-3 py-2 text-left text-sm ${
                       index === active ? "bg-accent/10 text-accent-dark" : ""
                     }`}
                     onMouseDown={(event) => {
