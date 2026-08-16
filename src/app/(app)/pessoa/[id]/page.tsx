@@ -1,6 +1,13 @@
 import { PersonAvatar } from "@/components/PersonChip";
 import { inferRelatives, loadFamilyGraph } from "@/lib/relationships";
-import { formatDate, fullName, genderLabel, lifespan, livingLabel } from "@/lib/person";
+import {
+  formatDate,
+  fullName,
+  genderLabel,
+  lifespan,
+  livingLabel,
+  partnershipLabel,
+} from "@/lib/person";
 import type { Person } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,9 +15,11 @@ import { notFound } from "next/navigation";
 function RelativeGroup({
   title,
   people,
+  notes,
 }: {
   title: string;
   people: Person[];
+  notes?: Record<string, string>;
 }) {
   if (people.length === 0) return null;
   return (
@@ -27,7 +36,10 @@ function RelativeGroup({
               <span>
                 <span className="block font-medium">{fullName(person)}</span>
                 {lifespan(person) ? (
-                  <span className="text-sm text-muted">{lifespan(person)}</span>
+                  <span className="block text-sm text-muted">{lifespan(person)}</span>
+                ) : null}
+                {notes?.[person.id] ? (
+                  <span className="block text-sm text-muted">{notes[person.id]}</span>
                 ) : null}
               </span>
             </Link>
@@ -96,7 +108,16 @@ export default async function PersonPage({
 
       <div className="mt-8 space-y-8">
         <RelativeGroup title="Pais" people={relatives.parents} />
-        <RelativeGroup title="Cônjuges e uniões" people={relatives.spouses} />
+        <RelativeGroup
+          title="Cônjuges e uniões"
+          people={relatives.spouses.map((union) => union.person)}
+          notes={Object.fromEntries(
+            relatives.spouses.map((union) => [
+              union.person.id,
+              partnershipLabel(union),
+            ]),
+          )}
+        />
         <RelativeGroup title="Filhos" people={relatives.children} />
         <RelativeGroup title="Irmãos" people={relatives.siblings} />
         <RelativeGroup title="Avós" people={relatives.grandparents} />

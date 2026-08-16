@@ -4,7 +4,8 @@ import type { Person } from "@prisma/client";
 import { useState } from "react";
 import { PersonChip } from "@/components/PersonChip";
 import { PersonSearchSelect } from "@/components/PersonSearchSelect";
-import { fullName } from "@/lib/person";
+import { dateInputValue, fullName, partnershipLabel } from "@/lib/person";
+import type { SpouseRelative } from "@/lib/relationships";
 import {
   addParentChild,
   addPartnership,
@@ -51,14 +52,15 @@ export function RelationBlocks({
   person: Person;
   parents: Person[];
   childPeople: Person[];
-  spouses: Person[];
+  spouses: SpouseRelative[];
   candidates: Option[];
   otherParentByChildId: Record<string, Person | null>;
 }) {
   const otherPeople = candidates.filter((item) => item.id !== person.id);
   const parentIds = new Set(parents.map((item) => item.id));
   const childIds = new Set(childPeople.map((item) => item.id));
-  const spouseIds = new Set(spouses.map((item) => item.id));
+  const spousePeople = spouses.map((union) => union.person);
+  const spouseIds = new Set(spousePeople.map((item) => item.id));
 
   const parentCandidates = otherPeople.filter((item) => !parentIds.has(item.id));
   const childCandidates = otherPeople.filter((item) => !childIds.has(item.id));
@@ -121,16 +123,16 @@ export function RelationBlocks({
           Cada casamento pode ter seus próprios filhos. Escolha o outro
           progenitor para ligar o filho a essa união.
         </p>
-        {spouses.map((spouse) => (
-          <div key={spouse.id} className="mb-4 border-b border-line pb-4">
+        {spouses.map((union) => (
+          <div key={union.person.id} className="mb-4 border-b border-line pb-4">
             <p className="mb-2 text-sm font-medium">
-              Com {fullName(spouse)}
+              Com {fullName(union.person)}
             </p>
             <ul className="mb-2 space-y-2">
-              {(childrenByUnion.get(spouse.id) ?? []).length === 0 ? (
+              {(childrenByUnion.get(union.person.id) ?? []).length === 0 ? (
                 <li className="text-sm text-muted">Nenhum filho nesta união.</li>
               ) : (
-                (childrenByUnion.get(spouse.id) ?? []).map((child) => (
+                (childrenByUnion.get(union.person.id) ?? []).map((child) => (
                   <li key={child.id} className="flex flex-wrap items-center justify-between gap-2">
                     <PersonChip person={child} href={`/pessoas/${child.id}`} />
                     <form action={removeParentChild}>
@@ -175,7 +177,7 @@ export function RelationBlocks({
             />
             <PersonSearchSelect
               name="otherParentId"
-              people={spouses}
+              people={spousePeople}
               placeholder="Deste casamento com… (opcional)"
               required={false}
             />
@@ -196,19 +198,52 @@ export function RelationBlocks({
           {spouses.length === 0 ? (
             <li className="text-sm text-muted">Nenhum casamento cadastrado.</li>
           ) : (
-            spouses.map((spouse, index) => (
-              <li key={spouse.id} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="min-w-0">
-                  <span className="mr-2 text-xs text-muted">#{index + 1}</span>
-                  <PersonChip person={spouse} href={`/pessoas/${spouse.id}`} />
-                </span>
-                <form action={removePartnership}>
+            spouses.map((union, index) => (
+              <li key={union.person.id} className="space-y-2 border-b border-line pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="mr-2 text-xs text-muted">#{index + 1}</span>
+                    <PersonChip person={union.person} href={`/pessoas/${union.person.id}`} />
+                    <span className="mt-1 block text-sm text-muted">
+                      {partnershipLabel(union)}
+                    </span>
+                  </span>
+                  <form action={removePartnership}>
+                    <input type="hidden" name="personAId" value={person.id} />
+                    <input type="hidden" name="personBId" value={union.person.id} />
+                    <button type="submit" className="btn-danger btn-sm">
+                      Remover
+                    </button>
+                  </form>
+                </div>
+                <ActionForm action={addPartnership}>
                   <input type="hidden" name="personAId" value={person.id} />
-                  <input type="hidden" name="personBId" value={spouse.id} />
-                  <button type="submit" className="btn-danger btn-sm">
-                    Remover
+                  <input type="hidden" name="personBId" value={union.person.id} />
+                  <input type="hidden" name="type" value={union.type} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-muted">
+                      Início
+                      <input
+                        type="date"
+                        name="startDate"
+                        defaultValue={dateInputValue(union.startDate)}
+                        className="input-line mt-1"
+                      />
+                    </label>
+                    <label className="text-xs text-muted">
+                      Término (se houver)
+                      <input
+                        type="date"
+                        name="endDate"
+                        defaultValue={dateInputValue(union.endDate)}
+                        className="input-line mt-1"
+                      />
+                    </label>
+                  </div>
+                  <button type="submit" className="btn-outline btn-sm">
+                    Salvar datas
                   </button>
-                </form>
+                </ActionForm>
               </li>
             ))
           )}

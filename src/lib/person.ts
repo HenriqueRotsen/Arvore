@@ -43,25 +43,36 @@ export function lifespan(person: {
   deathDate?: Date | string | null;
   deceased?: boolean;
 }) {
-  const birth = asDate(person.birthDate);
-  const death = asDate(person.deathDate);
-  const deceased = Boolean(person.deceased || death);
-  const birthYear = birth ? birth.toISOString().slice(0, 4) : null;
-  const deathYear = death ? death.toISOString().slice(0, 4) : null;
+  const birth = formatDate(person.birthDate);
+  const death = formatDate(person.deathDate);
+  const deceased = Boolean(person.deceased || person.deathDate);
 
-  if (birthYear && deathYear) return `${birthYear} – ${deathYear}`;
-  if (birthYear && deceased) return `${birthYear} – †`;
-  if (birthYear) return String(birthYear);
-  if (deathYear) return `† ${deathYear}`;
+  if (birth && death) return `${birth} – ${death} · falecido(a)`;
+  if (birth && deceased) return `${birth} · falecido(a)`;
+  if (death) return `falecido(a) · ${death}`;
   if (deceased) return "falecido(a)";
-  return null;
+  return birth;
 }
 
 export function livingLabel(person: {
   deathDate?: Date | string | null;
   deceased?: boolean;
 }) {
-  return person.deceased || person.deathDate ? "Falecido(a)" : "Vivo(a)";
+  return person.deceased || person.deathDate ? "falecido(a)" : "vivo(a)";
+}
+
+export function partnershipLabel(union: {
+  type: "married" | "partner";
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
+}) {
+  const kind = union.type === "partner" ? "União" : "Casamento";
+  const start = formatDate(union.startDate);
+  const end = formatDate(union.endDate);
+  if (start && end) return `${kind} · ${start} – ${end}`;
+  if (start) return `${kind} · ${start}`;
+  if (end) return `${kind} · até ${end}`;
+  return kind;
 }
 
 export function genderLabel(gender: Gender) {

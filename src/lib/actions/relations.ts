@@ -117,8 +117,8 @@ export async function addPartnership(formData: FormData): Promise<{ error?: stri
     personAId: formData.get("personAId"),
     personBId: formData.get("personBId"),
     type: formData.get("type") || "married",
-    startDate: formData.get("startDate") || undefined,
-    endDate: formData.get("endDate") || undefined,
+    startDate: String(formData.get("startDate") ?? "").trim() || undefined,
+    endDate: String(formData.get("endDate") ?? "").trim() || undefined,
   });
 
   if (parsed.personAId === parsed.personBId) {

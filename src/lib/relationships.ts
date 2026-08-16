@@ -1,11 +1,18 @@
 import type { Person } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+export type SpouseLink = {
+  id: string;
+  type: "married" | "partner";
+  startDate: Date | null;
+  endDate: Date | null;
+};
+
 export type FamilyGraph = {
   people: Map<string, Person>;
   parentsOf: Map<string, string[]>;
   childrenOf: Map<string, string[]>;
-  spousesOf: Map<string, Array<{ id: string; type: "married" | "partner" }>>;
+  spousesOf: Map<string, SpouseLink[]>;
 };
 
 function push(map: Map<string, string[]>, key: string, value: string) {
@@ -38,8 +45,18 @@ export async function loadFamilyGraph(): Promise<FamilyGraph> {
   for (const link of partnerships) {
     const a = graph.spousesOf.get(link.personAId) ?? [];
     const b = graph.spousesOf.get(link.personBId) ?? [];
-    a.push({ id: link.personBId, type: link.type });
-    b.push({ id: link.personAId, type: link.type });
+    a.push({
+      id: link.personBId,
+      type: link.type,
+      startDate: link.startDate,
+      endDate: link.endDate,
+    });
+    b.push({
+      id: link.personAId,
+      type: link.type,
+      startDate: link.startDate,
+      endDate: link.endDate,
+    });
     graph.spousesOf.set(link.personAId, a);
     graph.spousesOf.set(link.personBId, b);
   }
@@ -76,10 +93,17 @@ export function isDescendant(
   return false;
 }
 
+export type SpouseRelative = {
+  person: Person;
+  type: "married" | "partner";
+  startDate: Date | null;
+  endDate: Date | null;
+};
+
 export type InferredRelatives = {
   parents: Person[];
   children: Person[];
-  spouses: Person[];
+  spouses: SpouseRelative[];
   siblings: Person[];
   grandparents: Person[];
   grandchildren: Person[];
@@ -93,7 +117,7 @@ export function inferRelatives(
 ): InferredRelatives {
   const parentIds = graph.parentsOf.get(personId) ?? [];
   const childIds = graph.childrenOf.get(personId) ?? [];
-  const spouseIds = (graph.spousesOf.get(personId) ?? []).map((item) => item.id);
+  const spouseLinks = graph.spousesOf.get(personId) ?? [];
 
   const siblingIds = uniqueIds(
     parentIds.flatMap((parentId) => graph.childrenOf.get(parentId) ?? []),
@@ -121,7 +145,18 @@ export function inferRelatives(
   return {
     parents: peopleByIds(graph, parentIds),
     children: peopleByIds(graph, childIds),
-    spouses: peopleByIds(graph, spouseIds),
+    spouses: spouseLinks.flatMap((link) => {
+      const person = graph.people.get(link.id);
+      if (!person) return [];
+      return [
+        {
+          person,
+          type: link.type,
+          startDate: link.startDate,
+          endDate: link.endDate,
+        },
+      ];
+    }),
     siblings: peopleByIds(graph, siblingIds),
     grandparents: peopleByIds(graph, grandparentIds),
     grandchildren: peopleByIds(graph, grandchildIds),

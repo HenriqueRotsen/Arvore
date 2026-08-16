@@ -61,11 +61,6 @@ export default async function PeoplePage({
                 <PersonAvatar person={person} />
                 <span className="flex-1">
                   <span className="font-medium">{fullName(person)}</span>
-                  {person.deceased || person.deathDate ? (
-                    <span className="ml-2 text-[11px] uppercase tracking-[0.16em] text-terracotta">
-                      falecido(a)
-                    </span>
-                  ) : null}
                   {lifespan(person) ? (
                     <span className="block text-sm text-muted">
                       {lifespan(person)}
