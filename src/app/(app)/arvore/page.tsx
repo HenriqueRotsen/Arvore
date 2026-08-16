@@ -41,7 +41,8 @@ export default async function TreePage({
         <div>
           <h1 className="page-title">Árvore da família</h1>
           <p className="mt-1 text-sm text-muted sm:max-w-2xl">
-            Toque em duas pessoas para ver o parentesco.
+            Toque em duas pessoas para ver o parentesco. Quem ainda não tem
+            pai, filho ou cônjuge aparece à parte, como um nó solto.
           </p>
         </div>
         <TreeFocusSelect

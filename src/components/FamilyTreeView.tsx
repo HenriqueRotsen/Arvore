@@ -1,8 +1,8 @@
 "use client";
 
-import calcTree from "relatives-tree";
 import type { Node } from "relatives-tree/lib/types";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { layoutForest } from "@/lib/forest";
 import { toUndirectedEdges, type Adjacency } from "@/lib/graph";
 
 export type TreePerson = {
@@ -93,13 +93,10 @@ export function FamilyTreeView({
   scaleRef.current = scale;
   panRef.current = pan;
 
-  const tree = useMemo(() => {
-    try {
-      return calcTree(nodes, { rootId });
-    } catch {
-      return null;
-    }
-  }, [nodes, rootId]);
+  const tree = useMemo(
+    () => layoutForest(nodes, adjacency, rootId),
+    [nodes, adjacency, rootId],
+  );
 
   const highlightSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
   const pathPairs = useMemo(() => {
@@ -126,7 +123,7 @@ export function FamilyTreeView({
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  if (!tree) {
+  if (tree.nodes.length === 0) {
     return (
       <p className="border-y border-line py-6 text-muted">
         Não foi possível desenhar a árvore. Confira se os vínculos pai → filho
@@ -168,10 +165,14 @@ export function FamilyTreeView({
   }
 
   function onViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const target = event.target as Element | null;
+    if (target?.closest("a, button")) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture(event.pointerId);
 
-    if (pointers.current.size === 1 && event.button === 0) {
+    if (pointers.current.size === 1) {
       moved.current = false;
       drag.current = {
         startX: event.clientX,
@@ -212,7 +213,8 @@ export function FamilyTreeView({
     if (!current) return;
     const dx = event.clientX - current.startX;
     const dy = event.clientY - current.startY;
-    if (Math.abs(dx) + Math.abs(dy) > 6) {
+    if (!current.moved) {
+      if (Math.abs(dx) + Math.abs(dy) <= 10) return;
       current.moved = true;
       moved.current = true;
     }
@@ -220,23 +222,33 @@ export function FamilyTreeView({
   }
 
   function onViewportPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const wasTap = Boolean(drag.current) && !moved.current;
+    const { clientX, clientY } = event;
     pointers.current.delete(event.pointerId);
     pinch.current = null;
+    drag.current = null;
+
     if (pointers.current.size === 0) {
-      drag.current = null;
       event.currentTarget.releasePointerCapture?.(event.pointerId);
+    } else {
+      const remaining = [...pointers.current.values()][0];
+      if (remaining) {
+        drag.current = {
+          startX: remaining.x,
+          startY: remaining.y,
+          origPanX: panRef.current.x,
+          origPanY: panRef.current.y,
+          moved: moved.current,
+        };
+      }
       return;
     }
-    const remaining = [...pointers.current.values()][0];
-    if (remaining) {
-      drag.current = {
-        startX: remaining.x,
-        startY: remaining.y,
-        origPanX: panRef.current.x,
-        origPanY: panRef.current.y,
-        moved: moved.current,
-      };
-    }
+
+    if (!wasTap) return;
+    const hit = document.elementFromPoint(clientX, clientY);
+    if (hit?.closest("a, button")) return;
+    const id = hit?.closest("[data-person-id]")?.getAttribute("data-person-id");
+    if (id) onSelectPerson?.(id);
   }
 
   return (
@@ -312,11 +324,6 @@ export function FamilyTreeView({
               );
             })}
           </svg>
-          {edges.length === 0 ? (
-            <p className="pointer-events-none absolute bottom-4 left-1/2 z-10 w-max max-w-[90%] -translate-x-1/2 bg-background/90 px-4 py-2 text-center text-sm text-muted">
-              Ainda não há arestas: vincule pai → filho ou cônjuge no painel.
-            </p>
-          ) : null}
           {tree.nodes.map((node) => {
             const person = people[node.id];
             if (!person || node.placeholder) return null;
@@ -324,18 +331,22 @@ export function FamilyTreeView({
             const isFrom = selectedFrom === node.id;
             const isTo = selectedTo === node.id;
             const selected = isFrom || isTo;
+            const loose = (adjacency[node.id] ?? []).length === 0;
             const className = [
               "absolute block cursor-pointer border p-3",
               selected
                 ? "border-[#7a6bb8] bg-[linear-gradient(145deg,#cfe0f6_0%,#d5d0f0_48%,#e3cdee_100%)] shadow-[0_0_0_2px_rgba(122,107,184,0.28)]"
                 : onPath
                   ? "border-[#8b7ec4] bg-[linear-gradient(145deg,#e4eaf7_0%,#ebe6f6_100%)]"
-                  : "border-line bg-[#f7f4ea] hover:border-accent",
+                  : loose
+                    ? "border-dashed border-accent/55 bg-[#f7f4ea] hover:border-accent"
+                    : "border-line bg-[#f7f4ea] hover:border-accent",
             ].join(" ");
 
             return (
               <div
-                key={node.id}
+                key={`${node.id}-${node.left}-${node.top}`}
+                data-person-id={node.id}
                 role="button"
                 tabIndex={0}
                 className={className}
@@ -344,10 +355,6 @@ export function FamilyTreeView({
                   minHeight: NODE_HEIGHT,
                   transform: `translate(${node.left * unitX + PAD}px, ${node.top * unitY + PAD}px)`,
                   textAlign: "left",
-                }}
-                onClick={() => {
-                  if (moved.current) return;
-                  onSelectPerson?.(node.id);
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -385,6 +392,8 @@ export function FamilyTreeView({
                       <p className="text-xs font-medium text-[#4e3f86]">origem</p>
                     ) : isTo ? (
                       <p className="text-xs font-medium text-[#4e3f86]">destino</p>
+                    ) : loose ? (
+                      <p className="text-xs text-muted">sem vínculo · nova árvore</p>
                     ) : (
                       <p className="truncate text-xs text-muted">
                         {[person.years, person.birthCity].filter(Boolean).join(" · ") ||

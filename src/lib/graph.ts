@@ -87,6 +87,30 @@ export function toAdjacency(graph: FamilyGraph): Adjacency {
   return adjacency;
 }
 
+export function connectedComponents(adjacency: Adjacency): string[][] {
+  const seen = new Set<string>();
+  const components: string[][] = [];
+
+  for (const start of Object.keys(adjacency)) {
+    if (seen.has(start)) continue;
+    const group: string[] = [];
+    const stack = [start];
+    seen.add(start);
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      group.push(id);
+      for (const neighbor of adjacency[id] ?? []) {
+        if (seen.has(neighbor.id)) continue;
+        seen.add(neighbor.id);
+        stack.push(neighbor.id);
+      }
+    }
+    components.push(group);
+  }
+
+  return components;
+}
+
 function stepsFromNodes(adjacency: Adjacency, nodeIds: string[]): PathStep[] {
   const steps: PathStep[] = [];
   for (let index = 0; index < nodeIds.length - 1; index += 1) {

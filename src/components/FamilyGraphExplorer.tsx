@@ -95,8 +95,7 @@ export function FamilyGraphExplorer({
 
         {fromId && toId && result === null ? (
           <p className="mt-6 text-sm text-terracotta">
-            Não há caminho no grafo entre essas pessoas — ainda não há cadeia
-            de pai/filho ou cônjuge ligando os dois.
+            Não há relação entre essas pessoas!
           </p>
         ) : null}
 
