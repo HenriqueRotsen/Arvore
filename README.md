@@ -32,17 +32,14 @@ npm run dev
 ## Deploy (Vercel + Supabase)
 
 1. Crie um projeto Postgres no [Supabase](https://supabase.com).
-2. Em **Project Settings → Database**, copie:
-   - **Connection pooling (Transaction)** → `DATABASE_URL` (porta **6543**, com `?pgbouncer=true`)
-   - **Direct / Session** → `DIRECT_URL` (porta **5432**)
+2. Em **Project Settings → Database**, anote a **senha do banco** (não cole a URL inteira se a senha tiver `@`, `#`, `:`, `/` ou `[ ]`).
 3. Em **Project Settings → API**, copie `SUPABASE_URL` e `service_role` (`SUPABASE_SERVICE_ROLE_KEY`).
 4. No SQL Editor, rode `supabase/storage.sql` para o bucket público `photos`.
 5. No [Vercel](https://vercel.com), importe o repositório [HenriqueRotsen/Arvore](https://github.com/HenriqueRotsen/Arvore) e defina:
 
 | Variável | Uso |
 | --- | --- |
-| `DATABASE_URL` | Pooler do Supabase (`6543`, `pgbouncer=true`) |
-| `DIRECT_URL` | Conexão direta/sessão do Supabase (`5432`) — migrations |
+| `SUPABASE_DB_PASSWORD` | Senha crua do Postgres (o build monta as URLs) |
 | `SUPABASE_URL` | URL do projeto (`https://xxxx.supabase.co`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave `service_role` (fotos no Storage) |
 | `CRON_SECRET` | Segredo do ping diário (`openssl rand -hex 32`) |

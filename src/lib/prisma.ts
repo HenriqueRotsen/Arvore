@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { applySupabaseDbUrls } from "./apply-db-urls";
+
+applySupabaseDbUrls();
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;

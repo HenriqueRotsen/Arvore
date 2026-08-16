@@ -1,5 +1,24 @@
 import { spawnSync } from "node:child_process";
 
+function applyFromPassword() {
+  const password = process.env.SUPABASE_DB_PASSWORD?.trim();
+  if (!password) return false;
+
+  const ref =
+    process.env.SUPABASE_PROJECT_REF?.trim() || "wxxpmjbfojuuysgshhim";
+  const host =
+    process.env.SUPABASE_POOLER_HOST?.trim() ||
+    "aws-0-ca-central-1.pooler.supabase.com";
+  const encoded = encodeURIComponent(password);
+
+  process.env.DATABASE_URL = `postgresql://postgres.${ref}:${encoded}@${host}:6543/postgres?pgbouncer=true`;
+  process.env.DIRECT_URL = `postgresql://postgres.${ref}:${encoded}@${host}:5432/postgres`;
+  console.log(
+    `URLs montadas a partir de SUPABASE_DB_PASSWORD (host=${host}, ref=${ref}).`,
+  );
+  return true;
+}
+
 function mask(url) {
   return url.replace(/:([^:@/]+)@/, ":***@");
 }
@@ -65,11 +84,13 @@ function normalize(raw, name) {
 }
 
 try {
-  process.env.DATABASE_URL = normalize(process.env.DATABASE_URL, "DATABASE_URL");
-  process.env.DIRECT_URL = normalize(
-    process.env.DIRECT_URL || process.env.DATABASE_URL,
-    "DIRECT_URL",
-  );
+  if (!applyFromPassword()) {
+    process.env.DATABASE_URL = normalize(process.env.DATABASE_URL, "DATABASE_URL");
+    process.env.DIRECT_URL = normalize(
+      process.env.DIRECT_URL || process.env.DATABASE_URL,
+      "DIRECT_URL",
+    );
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
