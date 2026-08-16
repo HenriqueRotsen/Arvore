@@ -1,47 +1,64 @@
 # Árvore da família Rotsen
 
-Site colaborativo da árvore genealógica: qualquer pessoa pode ver a árvore; só administradores cadastram pessoas, vínculos **pai/mãe → filho** e cônjuges. Avós, netos, irmãos, tios e primos são calculados automaticamente.
+Site colaborativo da árvore genealógica: qualquer pessoa pode ver e cadastrar parentes. Avós, netos, irmãos, tios e primos são calculados automaticamente.
 
-## Como rodar
+## Como rodar (local)
 
 1. Instale o [Docker](https://docs.docker.com/get-docker/) e o Node.js 20+.
-2. Copie o ambiente e ajuste a senha do admin:
+2. Copie o ambiente:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Suba o PostgreSQL, gere o banco e o primeiro admin:
+3. Suba o PostgreSQL e o app:
 
 ```bash
 npm install
 npm run db:up
-npx prisma migrate dev --name init
+npx prisma migrate dev
 npm run db:seed
 npm run dev
 ```
 
-4. Abra [http://localhost:3000](http://localhost:3000). Se a 3000 já estiver em uso, o Next.js sobe na **3001** (ou a próxima livre) — use essa URL, não force a 3000.
-
-Login padrão (local, definido no `.env`):
-
-- e-mail: `admin@rotsen.local`
-- senha: a que estiver em `ADMIN_PASSWORD`
+4. Abra [http://localhost:3000](http://localhost:3000).
 
 ## Como cadastrar a família
 
-1. No **Painel**, crie as pessoas (nome, datas, foto opcional).
-2. Vincule **pai ou mãe → filho**. Se a criança tem dois pais, faça o vínculo duas vezes.
-3. Marque **cônjuge** quando quiser que o casal apareça junto (não é inferido só por terem filhos em comum).
-4. A home centraliza a árvore automaticamente (gerações mais antigas primeiro). Dá para mudar com “Ver a partir de”.
+1. Em **Pessoas**, crie quem faltar (nome, datas, foto opcional).
+2. Na ficha, vincule **pai ou mãe → filho** e **casamentos**.
+3. Na **Árvore**, clique em duas pessoas para ver o grau de parentesco.
 
-## Variáveis
+## Deploy (Vercel + Supabase)
+
+1. Crie um projeto Postgres no [Supabase](https://supabase.com).
+2. Em **Project Settings → Database**, copie:
+   - **Connection pooling (Transaction)** → `DATABASE_URL` (porta **6543**, com `?pgbouncer=true`)
+   - **Direct / Session** → `DIRECT_URL` (porta **5432**)
+3. Em **Project Settings → API**, copie `SUPABASE_URL` e `service_role` (`SUPABASE_SERVICE_ROLE_KEY`).
+4. No SQL Editor, rode `supabase/storage.sql` para o bucket público `photos`.
+5. No [Vercel](https://vercel.com), importe o repositório [HenriqueRotsen/Arvore](https://github.com/HenriqueRotsen/Arvore) e defina:
 
 | Variável | Uso |
 | --- | --- |
-| `DATABASE_URL` | Postgres (`postgresql://rotsen:rotsen@localhost:5435/rotsen` no Docker local) |
-| `AUTH_SECRET` | Segredo do login (`openssl rand -hex 32`) |
-| `AUTH_URL` | Só em produção, se precisar forçar o domínio público. Em local, **não defina** — o login segue a porta em que o site está. |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Primeiro admin (o seed cria ou atualiza) |
+| `DATABASE_URL` | Pooler do Supabase (`6543`, `pgbouncer=true`) |
+| `DIRECT_URL` | Conexão direta/sessão do Supabase (`5432`) — migrations |
+| `SUPABASE_URL` | URL do projeto (`https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave `service_role` (fotos no Storage) |
+| `CRON_SECRET` | Segredo do ping diário (`openssl rand -hex 32`) |
+| `AUTH_SECRET` | Segredo interno (`openssl rand -hex 32`) |
 
-Fotos ficam em `public/uploads/`. Em produção, troque a senha do admin e o `AUTH_SECRET`.
+O build roda `prisma migrate deploy`. Um **cron diário** (`0 8 * * *`) chama `/api/keep-alive` e faz um `COUNT` em `Person`, para o projeto gratuito do Supabase não pausar por inatividade.
+
+## Variáveis (local)
+
+| Variável | Uso |
+| --- | --- |
+| `DATABASE_URL` | Postgres local (`localhost:5435`) ou pooler do Supabase |
+| `DIRECT_URL` | Mesmo valor no Docker; no Supabase, a URL direta |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Fotos no Storage (produção) |
+| `CRON_SECRET` | Autoriza o cron do Vercel |
+| `AUTH_SECRET` | Segredo interno |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed legado do primeiro usuário |
+
+Fotos em local ficam em `public/uploads/`. No Vercel, vão para o bucket `photos` do Supabase.

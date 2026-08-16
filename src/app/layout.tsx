@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   title: "Rotsen — Árvore Genealógica",
   description:
     "Árvore genealógica colaborativa da família Rotsen — veja parentescos e cadastre pessoas e vínculos.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
