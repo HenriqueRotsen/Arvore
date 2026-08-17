@@ -112,6 +112,85 @@ function boxesOverlap(
   });
 }
 
+function overlaps(a: ForestNode, b: ForestNode) {
+  return (
+    !a.placeholder &&
+    !b.placeholder &&
+    Math.abs(a.left - b.left) < SIZE &&
+    Math.abs(a.top - b.top) < SIZE
+  );
+}
+
+function neighborIds(adjacency: Adjacency, id: string, kind: "parent" | "child" | "spouse") {
+  return (adjacency[id] ?? [])
+    .filter((item) => item.kind === kind)
+    .map((item) => item.id);
+}
+
+function siblingIds(adjacency: Adjacency, id: string) {
+  const ids = new Set<string>();
+  for (const parentId of neighborIds(adjacency, id, "parent")) {
+    for (const childId of neighborIds(adjacency, parentId, "child")) {
+      if (childId !== id) ids.add(childId);
+    }
+  }
+  return ids;
+}
+
+function parkInLaws(placed: ForestNode[], adjacency: Adjacency) {
+  const live = placed.filter((node) => !node.placeholder);
+  const byId = new Map(live.map((node) => [node.id, node]));
+
+  for (const person of live) {
+    const siblingsOnRow = [...siblingIds(adjacency, person.id)]
+      .map((id) => byId.get(id))
+      .filter(
+        (node): node is ForestNode =>
+          Boolean(node) && Math.abs(node.top - person.top) < 0.5,
+      );
+    if (siblingsOnRow.length === 0) continue;
+
+    const family = [person, ...siblingsOnRow];
+    const minLeft = Math.min(...family.map((node) => node.left));
+    const maxLeft = Math.max(...family.map((node) => node.left));
+    const familyIds = new Set(family.map((node) => node.id));
+    const spouses = neighborIds(adjacency, person.id, "spouse")
+      .map((id) => byId.get(id))
+      .filter(
+        (node): node is ForestNode => Boolean(node) && !familyIds.has(node.id),
+      );
+
+    for (const spouse of spouses) {
+      const atLeftEnd = person.left <= minLeft + 0.01;
+      const atRightEnd = person.left >= maxLeft - 0.01;
+      const closerLeft = person.left - minLeft <= maxLeft - person.left;
+      const dir = atLeftEnd ? -1 : atRightEnd ? 1 : closerLeft ? -1 : 1;
+      spouse.top = person.top;
+      spouse.left = atLeftEnd
+        ? person.left - SIZE
+        : atRightEnd
+          ? person.left + SIZE
+          : dir < 0
+            ? minLeft - SIZE
+            : maxLeft + SIZE;
+      let guard = 0;
+      while (
+        guard < 24 &&
+        live.some((other) => other.id !== spouse.id && overlaps(other, spouse))
+      ) {
+        guard += 1;
+        spouse.left += dir * SIZE;
+      }
+    }
+  }
+
+  const minLeft = Math.min(0, ...placed.map((node) => node.left));
+  if (minLeft < 0) {
+    const shift = -minLeft;
+    for (const node of placed) node.left += shift;
+  }
+}
+
 function layoutComponent(
   nodes: Node[],
   ids: string[],
@@ -208,6 +287,10 @@ function layoutComponent(
 
     addTree(extra, originX, originY);
   }
+
+  parkInLaws(placed, adjacency);
+  width = Math.max(SIZE, ...placed.map((node) => node.left + SIZE));
+  height = Math.max(SIZE, ...placed.map((node) => node.top + SIZE));
 
   return { nodes: placed, canvas: { width, height } };
 }

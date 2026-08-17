@@ -135,13 +135,6 @@ export function FamilyTreeView({
   }
 
   const highlightSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
-  const pathPairs = useMemo(() => {
-    const pairs = new Set<string>();
-    for (let i = 0; i < highlightedIds.length - 1; i += 1) {
-      pairs.add([highlightedIds[i], highlightedIds[i + 1]].sort().join(":"));
-    }
-    return pairs;
-  }, [highlightedIds]);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -182,7 +175,7 @@ export function FamilyTreeView({
     adjacency,
     positions,
     { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT },
-    pathPairs,
+    highlightedIds,
   );
 
   function pointerDistance(
@@ -307,19 +300,6 @@ export function FamilyTreeView({
             height={canvasHeight}
             aria-hidden
           >
-            <defs>
-              <linearGradient
-                id="kinship-stroke"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <stop offset="0%" stopColor="#5b8fd4" />
-                <stop offset="55%" stopColor="#7a6bb8" />
-                <stop offset="100%" stopColor="#a56bb8" />
-              </linearGradient>
-            </defs>
             {edges.map((edge) => {
               const spouse = edge.kind === "spouse";
               return (
@@ -329,7 +309,7 @@ export function FamilyTreeView({
                     fill="none"
                     stroke={
                       edge.onPath
-                        ? "url(#kinship-stroke)"
+                        ? "#6d74c7"
                         : spouse
                           ? "#a45a3a"
                           : "#8d7a62"
@@ -337,17 +317,19 @@ export function FamilyTreeView({
                     strokeWidth={edge.onPath ? 5 : 2.5}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeDasharray={spouse ? "7 5" : undefined}
+                    strokeDasharray={spouse && !edge.onPath ? "7 5" : undefined}
                   />
-                  <text
-                    x={edge.label.x}
-                    y={edge.label.y}
-                    textAnchor="middle"
-                    className="fill-[#5c4e3c]"
-                    style={{ fontSize: 11, fontFamily: "inherit" }}
-                  >
-                    {edge.label.text}
-                  </text>
+                  {edge.label ? (
+                    <text
+                      x={edge.label.x}
+                      y={edge.label.y}
+                      textAnchor="middle"
+                      className="fill-[#5c4e3c]"
+                      style={{ fontSize: 11, fontFamily: "inherit" }}
+                    >
+                      {edge.label.text}
+                    </text>
+                  ) : null}
                 </g>
               );
             })}
