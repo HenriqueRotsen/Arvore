@@ -11,16 +11,16 @@ export function toTreeNodes(graph: FamilyGraph): Node[] {
       id,
       type: "blood" as const,
     }));
-    const spouses = (graph.spousesOf.get(person.id) ?? []).map((spouse) => ({
-      id: spouse.id,
-      type: "married" as const,
-    }));
-    const spouseIds = new Set(spouses.map((spouse) => spouse.id));
     const siblingIds = new Set(
       parents.flatMap((parent) => graph.childrenOf.get(parent.id) ?? []),
     );
     siblingIds.delete(person.id);
-    for (const spouseId of spouseIds) siblingIds.delete(spouseId);
+    const spouses = (graph.spousesOf.get(person.id) ?? [])
+      .filter((spouse) => !siblingIds.has(spouse.id))
+      .map((spouse) => ({
+        id: spouse.id,
+        type: "married" as const,
+      }));
 
     return {
       id: person.id,

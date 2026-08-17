@@ -325,7 +325,14 @@ export function FamilyTreeView({
                       y={edge.label.y}
                       textAnchor="middle"
                       className="fill-[#5c4e3c]"
-                      style={{ fontSize: 11, fontFamily: "inherit" }}
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "inherit",
+                        paintOrder: "stroke",
+                        stroke: "#f4efe4",
+                        strokeWidth: 4,
+                        strokeLinejoin: "round",
+                      }}
                     >
                       {edge.label.text}
                     </text>

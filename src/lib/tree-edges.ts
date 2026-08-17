@@ -20,6 +20,12 @@ function neighbors(adjacency: Adjacency, id: string, kind: "parent" | "child" | 
     .map((item) => item.id);
 }
 
+function shareAParent(adjacency: Adjacency, a: string, b: string) {
+  const parentsA = new Set(neighbors(adjacency, a, "parent"));
+  if (parentsA.size === 0) return false;
+  return neighbors(adjacency, b, "parent").some((id) => parentsA.has(id));
+}
+
 function uniqueIds(ids: string[]) {
   return [...new Set(ids)];
 }
@@ -50,27 +56,7 @@ function spouseGeometry(
   const x1 = left.x + nodeWidth / 2 - 2;
   const x2 = right.x - nodeWidth / 2 + 2;
   const midX = (left.x + right.x) / 2;
-  return { left, right, y, x1, x2, midX, aligned, canSplit: aligned && x2 - x1 > 8 };
-}
-
-function gapSegments(
-  start: number,
-  end: number,
-  holes: Array<{ left: number; right: number }>,
-) {
-  if (end <= start) return [] as Array<[number, number]>;
-  const cuts = [...holes]
-    .filter((hole) => hole.right > start && hole.left < end)
-    .sort((a, b) => a.left - b.left);
-  const segments: Array<[number, number]> = [];
-  let cursor = start;
-  for (const hole of cuts) {
-    if (hole.left > cursor) segments.push([cursor, Math.min(hole.left, end)]);
-    cursor = Math.max(cursor, hole.right);
-    if (cursor >= end) break;
-  }
-  if (cursor < end) segments.push([cursor, end]);
-  return segments.filter(([from, to]) => to - from > 6);
+  return { left, right, y, x1, x2, midX, aligned };
 }
 
 /**
@@ -106,6 +92,7 @@ export function treeConnectors(
     }
   }
 
+  let familyIndex = 0;
   for (const group of childrenByParents.values()) {
     const children = group.children.flatMap((id) => {
       const point = placed(id);
@@ -119,7 +106,9 @@ export function treeConnectors(
 
     const twoParents = parents.length === 2;
     const married =
-      twoParents && neighbors(adjacency, parents[0].id, "spouse").includes(parents[1].id);
+      twoParents &&
+      neighbors(adjacency, parents[0].id, "spouse").includes(parents[1].id) &&
+      !shareAParent(adjacency, parents[0].id, parents[1].id);
 
     const attachX = twoParents
       ? (parents[0].point.x + parents[1].point.x) / 2
@@ -129,19 +118,13 @@ export function treeConnectors(
       : parents[0].point.y + nodeHeight / 2;
 
     const childPoints = children.map((child) => child.point);
-    const barY = barYFor(stemTopY, childPoints, nodeHeight);
+    const barY =
+      barYFor(stemTopY, childPoints, nodeHeight) +
+      (familyIndex % 3) * 10;
+    familyIndex += 1;
     const bloodXs = childPoints.map((point) => point.x);
     const barLeft = Math.min(attachX, ...bloodXs);
     const barRight = Math.max(attachX, ...bloodXs);
-
-    const inLawHoles = children.flatMap((child) =>
-      neighbors(adjacency, child.id, "spouse").flatMap((id) => {
-        if (group.children.includes(id)) return [];
-        const point = placed(id);
-        if (!point) return [];
-        return [{ left: point.x - nodeWidth / 2 + 8, right: point.x + nodeWidth / 2 - 8 }];
-      }),
-    );
 
     const pathChildren = children.filter((child) =>
       parents.some((parent) => pathPairs.has(pairKey(child.id, parent.id))),
@@ -159,27 +142,30 @@ export function treeConnectors(
       d: `M ${attachX} ${stemTopY} L ${attachX} ${barY}`,
       kind: "parent-child",
       onPath: pathChildren.length > 0,
-      label: { x: attachX, y: barY - 8, text: "pai/filho" },
+      label: {
+        x: attachX + 34,
+        y: stemTopY + Math.max(22, (barY - stemTopY) * 0.55),
+        text: "pai/filho",
+      },
     });
 
-    for (const [from, to] of gapSegments(barLeft, barRight, inLawHoles)) {
+    if (barRight - barLeft > 2) {
       connectors.push({
-        key: `bar:${group.parents.join("-")}:${from}:${to}`,
-        d: `M ${from} ${barY} L ${to} ${barY}`,
+        key: `bar:${group.parents.join("-")}`,
+        d: `M ${barLeft} ${barY} L ${barRight} ${barY}`,
         kind: "parent-child",
         onPath: false,
       });
     }
 
     for (const child of pathChildren) {
-      if (child.point.x !== attachX) {
-        connectors.push({
-          key: `bar-path:${child.id}`,
-          d: `M ${child.point.x} ${barY} L ${attachX} ${barY}`,
-          kind: "parent-child",
-          onPath: true,
-        });
-      }
+      if (Math.abs(child.point.x - attachX) < 2) continue;
+      connectors.push({
+        key: `bar-path:${child.id}`,
+        d: `M ${child.point.x} ${barY} L ${attachX} ${barY}`,
+        kind: "parent-child",
+        onPath: true,
+      });
     }
 
     for (const child of children) {
@@ -205,6 +191,7 @@ export function treeConnectors(
       const key = pairKey(id, spouseId);
       if (seenSpouse.has(key) || !positions.has(spouseId)) continue;
       seenSpouse.add(key);
+      if (shareAParent(adjacency, id, spouseId)) continue;
       const a = placed(id);
       const b = placed(spouseId);
       if (!a || !b) continue;
@@ -215,14 +202,17 @@ export function treeConnectors(
       const rightId = geom.left === a ? spouseId : id;
       const leftOnPath = fullOnPath || spouseHalfPath.has(`${key}:${leftId}`);
       const rightOnPath = fullOnPath || spouseHalfPath.has(`${key}:${rightId}`);
-
-      if (geom.canSplit) {
+      if (geom.aligned && geom.x2 > geom.x1) {
         connectors.push({
           key: `spouse-left:${key}`,
           d: `M ${geom.x1} ${geom.y} L ${geom.midX} ${geom.y}`,
           kind: "spouse",
           onPath: leftOnPath,
-          label: { x: geom.midX, y: geom.y - 10, text: "cônjuge" },
+          label: {
+            x: geom.midX,
+            y: geom.y - 14,
+            text: "cônjuge",
+          },
         });
         connectors.push({
           key: `spouse-right:${key}`,
@@ -239,7 +229,7 @@ export function treeConnectors(
           onPath: fullOnPath || leftOnPath || rightOnPath,
           label: {
             x: (a.x + b.x) / 2,
-            y: (a.y + b.y) / 2 - 10,
+            y: midY - 16,
             text: "cônjuge",
           },
         });

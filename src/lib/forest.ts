@@ -1,10 +1,10 @@
-import calcTree from "relatives-tree";
 import type { Node } from "relatives-tree/lib/types";
 import { connectedComponents, type Adjacency } from "@/lib/graph";
 
 const SIZE = 2;
 const TREE_GAP = 3;
 const ISOLATE_GAP = 1;
+const UNIT_GAP = 1;
 
 export type ForestNode = {
   id: string;
@@ -19,281 +19,291 @@ export type ForestLayout = {
   largestRootId: string | null;
 };
 
-function pickGenealogicalRoot(ids: string[], nodesById: Map<string, Node>) {
+function neighborIds(
+  adjacency: Adjacency,
+  id: string,
+  kind: "parent" | "child" | "spouse",
+) {
+  return (adjacency[id] ?? [])
+    .filter((neighbor) => neighbor.kind === kind)
+    .map((neighbor) => neighbor.id);
+}
+
+function shareAParent(adjacency: Adjacency, a: string, b: string) {
+  const parentsA = new Set(neighborIds(adjacency, a, "parent"));
+  return neighborIds(adjacency, b, "parent").some((id) => parentsA.has(id));
+}
+
+function pickGenealogicalRoot(
+  ids: string[],
+  nodesById: Map<string, Node>,
+  adjacency: Adjacency,
+) {
   const withoutParents = ids.filter(
-    (id) => (nodesById.get(id)?.parents.length ?? 0) === 0,
+    (id) => neighborIds(adjacency, id, "parent").length === 0,
   );
   const candidates = withoutParents.length > 0 ? withoutParents : ids;
   return [...candidates].sort((a, b) => {
     const byChildren =
+      neighborIds(adjacency, b, "child").length -
+      neighborIds(adjacency, a, "child").length;
+    if (byChildren !== 0) return byChildren;
+    const byNodeChildren =
       (nodesById.get(b)?.children.length ?? 0) -
       (nodesById.get(a)?.children.length ?? 0);
-    if (byChildren !== 0) return byChildren;
+    if (byNodeChildren !== 0) return byNodeChildren;
     return a.localeCompare(b);
   })[0];
 }
 
-function pickRoot(ids: string[], nodesById: Map<string, Node>, focusId: string) {
-  if (ids.includes(focusId)) return focusId;
-  return pickGenealogicalRoot(ids, nodesById);
-}
-
 type LaidTree = {
   canvas: { width: number; height: number };
-  nodes: Array<{ id: string; left: number; top: number; placeholder?: boolean }>;
+  nodes: ForestNode[];
 };
 
-function sliceNodes(nodes: Node[], ids: Set<string>): Node[] {
-  return nodes
-    .filter((node) => ids.has(node.id))
-    .map((node) => ({
-      id: node.id,
-      gender: node.gender,
-      placeholder: node.placeholder,
-      parents: node.parents.filter((rel) => ids.has(rel.id)),
-      children: node.children.filter((rel) => ids.has(rel.id)),
-      spouses: node.spouses.filter((rel) => ids.has(rel.id)),
-      siblings: node.siblings.filter((rel) => ids.has(rel.id)),
-    })) as Node[];
-}
+type FamilyUnit = {
+  id: string;
+  members: string[];
+  generation: number;
+  width: number;
+  left: number;
+};
 
-function restrictAdjacency(adjacency: Adjacency, ids: Set<string>): Adjacency {
-  const next: Adjacency = {};
+function layoutComponent(ids: string[], adjacency: Adjacency): LaidTree {
+  const idSet = new Set(ids);
+  const unionParent = new Map(ids.map((id) => [id, id]));
+
+  function find(id: string): string {
+    const parent = unionParent.get(id) ?? id;
+    if (parent === id) return id;
+    const root = find(parent);
+    unionParent.set(id, root);
+    return root;
+  }
+
+  function union(a: string, b: string) {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) unionParent.set(rootB, rootA);
+  }
+
   for (const id of ids) {
-    next[id] = (adjacency[id] ?? []).filter((neighbor) => ids.has(neighbor.id));
+    for (const spouseId of neighborIds(adjacency, id, "spouse")) {
+      if (!idSet.has(spouseId) || shareAParent(adjacency, id, spouseId)) continue;
+      union(id, spouseId);
+    }
   }
-  return next;
-}
 
-function calcLaid(nodes: Node[], ids: string[], rootId: string): LaidTree {
-  if (ids.length === 0) {
-    return { canvas: { width: SIZE, height: SIZE }, nodes: [] };
+  const membersByRoot = new Map<string, string[]>();
+  for (const id of ids) {
+    const root = find(id);
+    const members = membersByRoot.get(root) ?? [];
+    members.push(id);
+    membersByRoot.set(root, members);
   }
-  try {
-    const tree = calcTree(nodes, { rootId });
-    return {
-      canvas: { width: tree.canvas.width, height: tree.canvas.height },
-      nodes: tree.nodes.map((node) => ({
-        id: node.id,
-        left: node.left,
-        top: node.top,
-        placeholder: node.placeholder,
-      })),
-    };
-  } catch {
-    return {
-      canvas: { width: SIZE, height: Math.max(SIZE, ids.length * SIZE) },
-      nodes: ids.map((id, index) => ({
-        id,
-        left: 0,
-        top: index * SIZE,
-        placeholder: false,
-      })),
-    };
-  }
-}
 
-function boxesOverlap(
-  extra: LaidTree,
-  originX: number,
-  originY: number,
-  placed: ForestNode[],
-) {
-  return extra.nodes.some((node) => {
-    if (node.placeholder) return false;
-    const left = node.left + originX;
-    const top = node.top + originY;
-    return placed.some(
-      (other) =>
-        !other.placeholder &&
-        Math.abs(other.left - left) < SIZE &&
-        Math.abs(other.top - top) < SIZE,
-    );
+  const units: FamilyUnit[] = [...membersByRoot].map(([id, members]) => {
+    const anchor = [...members].sort((a, b) => {
+      const scoreA =
+        neighborIds(adjacency, a, "child").length * 3 +
+        neighborIds(adjacency, a, "parent").length * 2 +
+        neighborIds(adjacency, a, "spouse").length;
+      const scoreB =
+        neighborIds(adjacency, b, "child").length * 3 +
+        neighborIds(adjacency, b, "parent").length * 2 +
+        neighborIds(adjacency, b, "spouse").length;
+      return scoreB - scoreA || a.localeCompare(b);
+    })[0];
+    const partners = members
+      .filter((memberId) => memberId !== anchor)
+      .sort();
+    const ordered =
+      partners.length > 1
+        ? [partners[0], anchor, ...partners.slice(1)]
+        : [anchor, ...partners];
+    return {
+      id,
+      members: ordered,
+      generation: 0,
+      width: (ordered.length - 1) * SIZE + SIZE,
+      left: 0,
+    };
   });
-}
 
-function overlaps(a: ForestNode, b: ForestNode) {
-  return (
-    !a.placeholder &&
-    !b.placeholder &&
-    Math.abs(a.left - b.left) < SIZE &&
-    Math.abs(a.top - b.top) < SIZE
-  );
-}
+  const unitByPerson = new Map<string, FamilyUnit>();
+  for (const unit of units) {
+    for (const id of unit.members) unitByPerson.set(id, unit);
+  }
 
-function neighborIds(adjacency: Adjacency, id: string, kind: "parent" | "child" | "spouse") {
-  return (adjacency[id] ?? [])
-    .filter((item) => item.kind === kind)
-    .map((item) => item.id);
-}
+  for (let pass = 0; pass < units.length + 1; pass += 1) {
+    let changed = false;
+    for (const parentId of ids) {
+      const parentUnit = unitByPerson.get(parentId);
+      if (!parentUnit) continue;
+      for (const childId of neighborIds(adjacency, parentId, "child")) {
+        const childUnit = unitByPerson.get(childId);
+        if (!childUnit || childUnit === parentUnit) continue;
+        const next = parentUnit.generation + 1;
+        if (childUnit.generation < next) {
+          childUnit.generation = next;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
 
-function siblingIds(adjacency: Adjacency, id: string) {
-  const ids = new Set<string>();
-  for (const parentId of neighborIds(adjacency, id, "parent")) {
-    for (const childId of neighborIds(adjacency, parentId, "child")) {
-      if (childId !== id) ids.add(childId);
+  const positionByPerson = new Map<string, number>();
+  const maxGeneration = Math.max(0, ...units.map((unit) => unit.generation));
+
+  function recordPositions(unit: FamilyUnit) {
+    for (let index = 0; index < unit.members.length; index += 1) {
+      positionByPerson.set(unit.members[index], unit.left + index * SIZE);
     }
   }
-  return ids;
-}
 
-function parkInLaws(placed: ForestNode[], adjacency: Adjacency) {
-  const live = placed.filter((node) => !node.placeholder);
-  const byId = new Map(live.map((node) => [node.id, node]));
+  type UnitBlock = {
+    key: string;
+    units: FamilyUnit[];
+    target: number;
+    width: number;
+    left: number;
+  };
 
-  for (const person of live) {
-    const siblingsOnRow = [...siblingIds(adjacency, person.id)]
-      .map((id) => byId.get(id))
-      .filter((node): node is ForestNode => {
-        if (!node) return false;
-        return Math.abs(node.top - person.top) < 0.5;
-      });
-    if (siblingsOnRow.length === 0) continue;
-
-    const family = [person, ...siblingsOnRow];
-    const minLeft = Math.min(...family.map((node) => node.left));
-    const maxLeft = Math.max(...family.map((node) => node.left));
-    const familyIds = new Set(family.map((node) => node.id));
-    const spouses = neighborIds(adjacency, person.id, "spouse")
-      .map((id) => byId.get(id))
-      .filter((node): node is ForestNode => {
-        if (!node) return false;
-        return !familyIds.has(node.id);
-      });
-
-    for (const spouse of spouses) {
-      const atLeftEnd = person.left <= minLeft + 0.01;
-      const atRightEnd = person.left >= maxLeft - 0.01;
-      const closerLeft = person.left - minLeft <= maxLeft - person.left;
-      const dir = atLeftEnd ? -1 : atRightEnd ? 1 : closerLeft ? -1 : 1;
-      spouse.top = person.top;
-      spouse.left = atLeftEnd
-        ? person.left - SIZE
-        : atRightEnd
-          ? person.left + SIZE
-          : dir < 0
-            ? minLeft - SIZE
-            : maxLeft + SIZE;
-      let guard = 0;
-      while (
-        guard < 24 &&
-        live.some((other) => other.id !== spouse.id && overlaps(other, spouse))
-      ) {
-        guard += 1;
-        spouse.left += dir * SIZE;
+  function packBlocks(blocks: UnitBlock[]) {
+    blocks.sort((a, b) => a.target - b.target || a.key.localeCompare(b.key));
+    let cursor = Number.NEGATIVE_INFINITY;
+    for (const block of blocks) {
+      const ideal = block.target - block.width / 2;
+      block.left = Number.isFinite(cursor)
+        ? Math.max(ideal, cursor + UNIT_GAP)
+        : ideal;
+      cursor = block.left + block.width;
+    }
+    if (blocks.length > 0) {
+      const correction =
+        blocks.reduce(
+          (sum, block) =>
+            sum + (block.target - (block.left + block.width / 2)),
+          0,
+        ) / blocks.length;
+      for (const block of blocks) block.left += correction;
+    }
+    for (const block of blocks) {
+      let left = block.left;
+      for (const unit of block.units) {
+        unit.left = left;
+        recordPositions(unit);
+        left += unit.width + UNIT_GAP;
       }
     }
   }
 
-  const minLeft = Math.min(0, ...placed.map((node) => node.left));
+  function forwardGeneration(generation: number) {
+    const level = units.filter((unit) => unit.generation === generation);
+    if (generation === 0) {
+      let left = 0;
+      for (const unit of level.sort((a, b) => a.id.localeCompare(b.id))) {
+        unit.left = left;
+        recordPositions(unit);
+        left += unit.width + TREE_GAP;
+      }
+      return;
+    }
+
+    const byParents = new Map<string, FamilyUnit[]>();
+    for (const unit of level) {
+      const parentIds = [
+        ...new Set(
+          unit.members.flatMap((id) =>
+            neighborIds(adjacency, id, "parent").filter((parentId) =>
+              positionByPerson.has(parentId),
+            ),
+          ),
+        ),
+      ].sort();
+      const key = parentIds.length > 0 ? parentIds.join("|") : `root:${unit.id}`;
+      const group = byParents.get(key) ?? [];
+      group.push(unit);
+      byParents.set(key, group);
+    }
+
+    const blocks: UnitBlock[] = [...byParents].map(([key, blockUnits]) => {
+      const parentIds = key.startsWith("root:") ? [] : key.split("|");
+      const target =
+        parentIds.length > 0
+          ? parentIds.reduce(
+              (sum, id) => sum + (positionByPerson.get(id) ?? 0),
+              0,
+            ) / parentIds.length
+          : 0;
+      const ordered = [...blockUnits].sort((a, b) => a.id.localeCompare(b.id));
+      return {
+        key,
+        units: ordered,
+        target,
+        width:
+          ordered.reduce((sum, unit) => sum + unit.width, 0) +
+          Math.max(0, ordered.length - 1) * UNIT_GAP,
+        left: 0,
+      };
+    });
+    packBlocks(blocks);
+  }
+
+  function backwardGeneration(generation: number) {
+    const level = units.filter((unit) => unit.generation === generation);
+    const blocks: UnitBlock[] = level.map((unit) => {
+      const childPositions = unit.members.flatMap((id) =>
+        neighborIds(adjacency, id, "child").flatMap((childId) => {
+          const position = positionByPerson.get(childId);
+          return position === undefined ? [] : [position];
+        }),
+      );
+      const currentCenter = unit.left + unit.width / 2;
+      return {
+        key: unit.id,
+        units: [unit],
+        target:
+          childPositions.length > 0
+            ? childPositions.reduce((sum, value) => sum + value, 0) /
+              childPositions.length
+            : currentCenter,
+        width: unit.width,
+        left: 0,
+      };
+    });
+    packBlocks(blocks);
+  }
+
+  for (let generation = 0; generation <= maxGeneration; generation += 1) {
+    forwardGeneration(generation);
+  }
+  for (let generation = maxGeneration - 1; generation >= 0; generation -= 1) {
+    backwardGeneration(generation);
+  }
+
+  const nodes = ids.map((id) => {
+    const unit = unitByPerson.get(id)!;
+    return {
+      id,
+      left: positionByPerson.get(id) ?? 0,
+      top: unit.generation * SIZE,
+      placeholder: false,
+    };
+  });
+  const minLeft = Math.min(0, ...nodes.map((node) => node.left));
   if (minLeft < 0) {
-    const shift = -minLeft;
-    for (const node of placed) node.left += shift;
-  }
-}
-
-function layoutComponent(
-  nodes: Node[],
-  ids: string[],
-  rootId: string,
-  adjacency: Adjacency,
-): LaidTree {
-  const placed: ForestNode[] = [];
-  let width = SIZE;
-  let height = SIZE;
-
-  function addTree(tree: LaidTree, originX: number, originY: number) {
-    for (const node of tree.nodes) {
-      if (
-        !node.placeholder &&
-        placed.some((other) => other.id === node.id && !other.placeholder)
-      ) {
-        continue;
-      }
-      placed.push({
-        id: node.id,
-        left: node.left + originX,
-        top: node.top + originY,
-        placeholder: node.placeholder,
-      });
-    }
-    width = Math.max(width, ...placed.map((node) => node.left + SIZE));
-    height = Math.max(height, ...placed.map((node) => node.top + SIZE));
+    for (const node of nodes) node.left -= minLeft;
   }
 
-  const mainIds = new Set(ids);
-  const mainNodes = sliceNodes(nodes, mainIds);
-  const mainRoot = mainIds.has(rootId) ? rootId : ids[0];
-  addTree(calcLaid(mainNodes, ids, mainRoot), 0, 0);
-
-  const laid = () =>
-    new Set(placed.filter((node) => !node.placeholder).map((node) => node.id));
-
-  let guard = 0;
-  while (guard < ids.length + 2) {
-    guard += 1;
-    const missing = ids.filter((id) => !laid().has(id));
-    if (missing.length === 0) break;
-
-    const missingSet = new Set(missing);
-    const groups = connectedComponents(restrictAdjacency(adjacency, missingSet));
-    groups.sort((a, b) => b.length - a.length);
-
-    let attachId: string | undefined;
-    let group = groups[0];
-    outer: for (const candidate of groups) {
-      for (const id of candidate) {
-        const anchor = (adjacency[id] ?? []).find(
-          (neighbor) =>
-            laid().has(neighbor.id) &&
-            (neighbor.kind === "parent" || neighbor.kind === "spouse"),
-        );
-        if (anchor) {
-          group = candidate;
-          attachId = anchor.id;
-          break outer;
-        }
-      }
-    }
-
-    const groupSet = new Set(group);
-    const groupNodes = sliceNodes(nodes, groupSet);
-    const nodesById = new Map(groupNodes.map((node) => [node.id, node]));
-    const groupRoot = attachId
-      ? (group.find((id) =>
-          (adjacency[id] ?? []).some((neighbor) => neighbor.id === attachId),
-        ) ?? pickRoot(group, nodesById, group[0]))
-      : pickRoot(group, nodesById, group[0]);
-
-    const extra = calcLaid(groupNodes, group, groupRoot);
-    const extraRoot = extra.nodes.find((node) => node.id === groupRoot) ?? extra.nodes[0];
-
-    let originX = width + TREE_GAP;
-    let originY = 0;
-    if (attachId && extraRoot) {
-      const anchor = placed.find((node) => node.id === attachId);
-      if (anchor) {
-        originX = anchor.left - extraRoot.left;
-        originY = anchor.top + SIZE + TREE_GAP - extraRoot.top;
-        if (boxesOverlap(extra, originX, originY, placed)) {
-          originX = width + TREE_GAP - extraRoot.left;
-          originY = anchor.top - extraRoot.top;
-        }
-        if (boxesOverlap(extra, originX, originY, placed)) {
-          originX = extraRoot.left * -1;
-          originY = height + TREE_GAP - extraRoot.top;
-        }
-      }
-    }
-
-    addTree(extra, originX, originY);
-  }
-
-  parkInLaws(placed, adjacency);
-  width = Math.max(SIZE, ...placed.map((node) => node.left + SIZE));
-  height = Math.max(SIZE, ...placed.map((node) => node.top + SIZE));
-
-  return { nodes: placed, canvas: { width, height } };
+  return {
+    nodes,
+    canvas: {
+      width: Math.max(SIZE, ...nodes.map((node) => node.left + SIZE)),
+      height: Math.max(SIZE, ...nodes.map((node) => node.top + SIZE)),
+    },
+  };
 }
 
 export function layoutForest(
@@ -305,7 +315,7 @@ export function layoutForest(
   const components = connectedComponents(adjacency);
   const largest = [...components].sort((a, b) => b.length - a.length)[0];
   const largestRootId = largest
-    ? pickGenealogicalRoot(largest, nodesById)
+    ? pickGenealogicalRoot(largest, nodesById, adjacency)
     : null;
   const focusComponent = components.find((group) => group.includes(focusId));
   const rest = components.filter((group) => group !== focusComponent);
@@ -332,8 +342,7 @@ export function layoutForest(
 
   const firstRow = [...(focusComponent ? [focusComponent] : []), ...families];
   for (const group of firstRow) {
-    const root = pickRoot(group, nodesById, focusId);
-    const canvas = place(layoutComponent(nodes, group, root, adjacency), cursorX, 0);
+    const canvas = place(layoutComponent(group, adjacency), cursorX, 0);
     cursorX += canvas.width + TREE_GAP;
     rowWidth = Math.max(rowWidth, cursorX);
     rowHeight = Math.max(rowHeight, canvas.height);
@@ -345,11 +354,10 @@ export function layoutForest(
     const cellH = SIZE + ISOLATE_GAP;
     const cols = Math.max(3, Math.floor(Math.max(rowWidth, cellW * 3) / cellW));
     isolates.forEach((group, index) => {
-      const root = pickRoot(group, nodesById, focusId);
       const col = index % cols;
       const row = Math.floor(index / cols);
       place(
-        layoutComponent(nodes, group, root, adjacency),
+        layoutComponent(group, adjacency),
         col * cellW,
         originY + row * cellH,
       );
