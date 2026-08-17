@@ -144,10 +144,10 @@ function parkInLaws(placed: ForestNode[], adjacency: Adjacency) {
   for (const person of live) {
     const siblingsOnRow = [...siblingIds(adjacency, person.id)]
       .map((id) => byId.get(id))
-      .filter(
-        (node): node is ForestNode =>
-          Boolean(node) && Math.abs(node.top - person.top) < 0.5,
-      );
+      .filter((node): node is ForestNode => {
+        if (!node) return false;
+        return Math.abs(node.top - person.top) < 0.5;
+      });
     if (siblingsOnRow.length === 0) continue;
 
     const family = [person, ...siblingsOnRow];
@@ -156,9 +156,10 @@ function parkInLaws(placed: ForestNode[], adjacency: Adjacency) {
     const familyIds = new Set(family.map((node) => node.id));
     const spouses = neighborIds(adjacency, person.id, "spouse")
       .map((id) => byId.get(id))
-      .filter(
-        (node): node is ForestNode => Boolean(node) && !familyIds.has(node.id),
-      );
+      .filter((node): node is ForestNode => {
+        if (!node) return false;
+        return !familyIds.has(node.id);
+      });
 
     for (const spouse of spouses) {
       const atLeftEnd = person.left <= minLeft + 0.01;
