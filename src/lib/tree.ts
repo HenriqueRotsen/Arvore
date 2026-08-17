@@ -15,10 +15,12 @@ export function toTreeNodes(graph: FamilyGraph): Node[] {
       id: spouse.id,
       type: "married" as const,
     }));
+    const spouseIds = new Set(spouses.map((spouse) => spouse.id));
     const siblingIds = new Set(
       parents.flatMap((parent) => graph.childrenOf.get(parent.id) ?? []),
     );
     siblingIds.delete(person.id);
+    for (const spouseId of spouseIds) siblingIds.delete(spouseId);
 
     return {
       id: person.id,

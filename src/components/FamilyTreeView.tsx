@@ -3,7 +3,8 @@
 import type { Node } from "relatives-tree/lib/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { layoutForest } from "@/lib/forest";
-import { toUndirectedEdges, type Adjacency } from "@/lib/graph";
+import type { Adjacency } from "@/lib/graph";
+import { treeConnectors } from "@/lib/tree-edges";
 
 export type TreePerson = {
   id: string;
@@ -22,39 +23,6 @@ const ROW_GAP = 140;
 const PAD = 80;
 const UNIT_X = (NODE_WIDTH + COL_GAP) / 2;
 const UNIT_Y = (NODE_HEIGHT + ROW_GAP) / 2;
-
-function elbowPath(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  kind: "parent-child" | "spouse",
-) {
-  if (kind === "spouse") {
-    const midY = (y1 + y2) / 2;
-    return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-  }
-  const midY = (y1 + y2) / 2;
-  return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
-}
-
-function edgeLabelPoint(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  kind: "parent-child" | "spouse",
-) {
-  if (kind === "spouse") {
-    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 10 };
-  }
-  const upper = a.y <= b.y ? a : b;
-  const lower = a.y <= b.y ? b : a;
-  const gapTop = upper.y + NODE_HEIGHT / 2;
-  const gapBottom = lower.y - NODE_HEIGHT / 2;
-  return {
-    x: lower.x,
-    y: (gapTop + gapBottom) / 2 - 8,
-  };
-}
 
 type DragState = {
   startX: number;
@@ -210,15 +178,12 @@ export function FamilyTreeView({
     ]),
   );
 
-  const edges = toUndirectedEdges(adjacency)
-    .map((edge) => {
-      const a = positions.get(edge.from);
-      const b = positions.get(edge.to);
-      if (!a || !b) return null;
-      const key = [edge.from, edge.to].sort().join(":");
-      return { ...edge, a, b, onPath: pathPairs.has(key) };
-    })
-    .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge));
+  const edges = treeConnectors(
+    adjacency,
+    positions,
+    { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT },
+    pathPairs,
+  );
 
   function pointerDistance(
     a: { x: number; y: number },
@@ -356,13 +321,11 @@ export function FamilyTreeView({
               </linearGradient>
             </defs>
             {edges.map((edge) => {
-              const d = elbowPath(edge.a.x, edge.a.y, edge.b.x, edge.b.y, edge.kind);
               const spouse = edge.kind === "spouse";
-              const label = edgeLabelPoint(edge.a, edge.b, edge.kind);
               return (
-                <g key={`${edge.from}-${edge.to}-${edge.kind}`}>
+                <g key={edge.key}>
                   <path
-                    d={d}
+                    d={edge.d}
                     fill="none"
                     stroke={
                       edge.onPath
@@ -377,13 +340,13 @@ export function FamilyTreeView({
                     strokeDasharray={spouse ? "7 5" : undefined}
                   />
                   <text
-                    x={label.x}
-                    y={label.y}
+                    x={edge.label.x}
+                    y={edge.label.y}
                     textAnchor="middle"
                     className="fill-[#5c4e3c]"
                     style={{ fontSize: 11, fontFamily: "inherit" }}
                   >
-                    {spouse ? "cônjuge" : "pai/filho"}
+                    {edge.label.text}
                   </text>
                 </g>
               );
